@@ -18,6 +18,9 @@ interface Task {
   assignedBy?: string;
   dueDate?: string;
   createdDate: string;
+  approvalStatus?: 'pending' | 'approved' | 'rejected';
+  approvedBy?: string;
+  approvedDate?: string;
 }
 
 export default function EmployeeTasks() {
@@ -66,7 +69,67 @@ export default function EmployeeTasks() {
       priority: 'medium',
       status: 'completed',
       type: 'user-added',
-      createdDate: '2024-01-12'
+      createdDate: '2024-01-12',
+      approvalStatus: 'approved',
+      approvedBy: 'Sarah Johnson',
+      approvedDate: '2024-01-14'
+    },
+    {
+      id: '5',
+      title: 'API integration testing',
+      description: 'Test all API endpoints for the new integration',
+      priority: 'high',
+      status: 'completed',
+      type: 'user-added',
+      createdDate: '2024-01-08',
+      approvalStatus: 'approved',
+      approvedBy: 'Mike Wilson',
+      approvedDate: '2024-01-10'
+    },
+    {
+      id: '6',
+      title: 'Security audit implementation',
+      description: 'Implement security recommendations from the audit',
+      priority: 'medium',
+      status: 'completed',
+      type: 'assigned',
+      assignedBy: 'Lisa Chen',
+      createdDate: '2024-01-05'
+    },
+    {
+      id: '7',
+      title: 'Code refactoring task',
+      description: 'Refactor legacy code to improve maintainability',
+      priority: 'medium',
+      status: 'completed',
+      type: 'user-added',
+      createdDate: '2024-01-13'
+      // No approval status - completed but not approved yet
+    },
+    {
+      id: '8',
+      title: 'Performance optimization',
+      description: 'Optimize application performance for better user experience',
+      priority: 'high',
+      status: 'completed',
+      type: 'user-added',
+      createdDate: '2024-01-11',
+      approvalStatus: 'rejected',
+      approvedBy: 'Sarah Johnson',
+      approvedDate: '2024-01-15'
+    },
+    {
+      id: '9',
+      title: 'Update legacy system',
+      description: 'Modernize the legacy payment processing system',
+      priority: 'high',
+      status: 'in-progress',
+      type: 'assigned',
+      assignedBy: 'Mike Wilson',
+      createdDate: '2024-01-09',
+      approvalStatus: 'rejected',
+      approvedBy: 'Mike Wilson',
+      approvedDate: '2024-01-16'
     }
   ]);
 
@@ -132,7 +195,12 @@ export default function EmployeeTasks() {
   const handleToggleStatus = (taskId: string) => {
     setTasks(tasks.map(task =>
       task.id === taskId
-        ? { ...task, status: task.status === 'completed' ? 'pending' : 'completed' }
+        ? {
+            ...task,
+            status: task.status === 'completed' ? 'pending' : 'completed',
+            // Reset approval status when reopening a rejected task
+            ...(task.approvalStatus === 'rejected' && { approvalStatus: undefined, approvedBy: undefined, approvedDate: undefined })
+          }
         : task
     ));
   };
@@ -144,6 +212,13 @@ export default function EmployeeTasks() {
 
   const submitForApproval = () => {
     if (selectedTask && selectedManager) {
+      // Update the task with approval status
+      setTasks(tasks.map(task =>
+        task.id === selectedTask.id
+          ? { ...task, approvalStatus: 'pending' as const }
+          : task
+      ));
+
       // In a real app, this would send the task to the selected manager for approval
       console.log(`Task "${selectedTask.title}" submitted to ${selectedManager} for approval`);
       setIsApprovalModalOpen(false);
@@ -152,8 +227,28 @@ export default function EmployeeTasks() {
     }
   };
 
-  const userAddedTasks = tasks.filter(task => task.type === 'user-added');
-  const assignedTasks = tasks.filter(task => task.type === 'assigned');
+  // Filter tasks by type and status
+  const pendingUserTasks = tasks.filter(task =>
+    task.type === 'user-added' && task.status !== 'completed'
+  );
+  const completedNotApprovedUserTasks = tasks.filter(task =>
+    task.type === 'user-added' && task.status === 'completed' && (!task.approvalStatus || task.approvalStatus === 'pending')
+  );
+  const completedApprovedUserTasks = tasks.filter(task =>
+    task.type === 'user-added' && task.status === 'completed' && task.approvalStatus === 'approved'
+  );
+  const rejectedUserTasks = tasks.filter(task =>
+    task.type === 'user-added' && task.approvalStatus === 'rejected'
+  );
+  const pendingAssignedTasks = tasks.filter(task =>
+    task.type === 'assigned' && task.status !== 'completed' && task.approvalStatus !== 'rejected'
+  );
+  const completedAssignedTasks = tasks.filter(task =>
+    task.type === 'assigned' && task.status === 'completed'
+  );
+  const rejectedAssignedTasks = tasks.filter(task =>
+    task.type === 'assigned' && task.approvalStatus === 'rejected'
+  );
 
   const completedTasks = tasks.filter(task => task.status === 'completed').length;
   const todoTasks = tasks.filter(task => task.status !== 'completed').length;
@@ -225,7 +320,7 @@ export default function EmployeeTasks() {
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                To-Do Tasks ({userAddedTasks.length})
+                To-Do Tasks ({pendingUserTasks.length + completedNotApprovedUserTasks.length + completedApprovedUserTasks.length + rejectedUserTasks.length})
               </button>
               <button
                 onClick={() => setActiveTab('assigned')}
@@ -235,123 +330,451 @@ export default function EmployeeTasks() {
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                Assigned Tasks ({assignedTasks.length})
+                Assigned Tasks ({pendingAssignedTasks.length + completedAssignedTasks.length + rejectedAssignedTasks.length})
               </button>
             </nav>
           </div>
 
           {/* Task Lists */}
-          <Card>
-            <CardContent className="p-6">
-              {activeTab === 'todo' ? (
-                <div className="space-y-4">
-                  {userAddedTasks.length > 0 ? (
-                    userAddedTasks.map((task) => (
-                      <div key={task.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-3 mb-2">
-                              <h3 className="font-semibold text-gray-900">{task.title}</h3>
-                              <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(task.status)}`}>
-                                {task.status}
-                              </span>
-                              <div className="flex items-center space-x-1">
-                                <div className={`w-3 h-3 rounded-full ${getPriorityColor(task.priority)}`}></div>
-                                <span className="text-xs text-gray-500 capitalize">{task.priority}</span>
+          <div className="space-y-6">
+            {activeTab === 'todo' ? (
+              <>
+                {/* Pending To-Do Tasks */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold text-gray-900">
+                      Pending Tasks ({pendingUserTasks.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      {pendingUserTasks.length > 0 ? (
+                        pendingUserTasks.map((task) => (
+                          <div key={task.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-3 mb-2">
+                                  <h3 className="font-semibold text-gray-900">{task.title}</h3>
+                                  <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(task.status)}`}>
+                                    {task.status}
+                                  </span>
+                                  <div className="flex items-center space-x-1">
+                                    <div className={`w-3 h-3 rounded-full ${getPriorityColor(task.priority)}`}></div>
+                                    <span className="text-xs text-gray-500 capitalize">{task.priority}</span>
+                                  </div>
+                                </div>
+                                {task.description && (
+                                  <p className="text-sm text-gray-600 mb-2">{task.description}</p>
+                                )}
+                                <div className="flex items-center space-x-4 text-xs text-gray-500">
+                                  <span>Created: {new Date(task.createdDate).toLocaleDateString()}</span>
+                                  {task.dueDate && (
+                                    <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleToggleStatus(task.id)}
+                                >
+                                  {task.status === 'completed' ? 'Mark Pending' : 'Mark Complete'}
+                                </Button>
+                                {task.status === 'completed' && !task.approvalStatus && (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleRequestApproval(task)}
+                                    className="bg-green-600 hover:bg-green-700"
+                                  >
+                                    Request Approval
+                                  </Button>
+                                )}
                               </div>
                             </div>
-                            {task.description && (
-                              <p className="text-sm text-gray-600 mb-2">{task.description}</p>
-                            )}
-                            <div className="flex items-center space-x-4 text-xs text-gray-500">
-                              <span>Created: {new Date(task.createdDate).toLocaleDateString()}</span>
-                              {task.dueDate && (
-                                <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
-                              )}
-                            </div>
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleToggleStatus(task.id)}
-                            >
-                              {task.status === 'completed' ? 'Mark Pending' : 'Mark Complete'}
-                            </Button>
-                            {task.status === 'completed' && (
-                              <Button
-                                size="sm"
-                                onClick={() => handleRequestApproval(task)}
-                                className="bg-green-600 hover:bg-green-700"
-                              >
-                                Request Approval
-                              </Button>
-                            )}
-                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8">
+                          <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                          </svg>
+                          <p className="text-gray-500">No pending tasks found</p>
                         </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8">
-                      <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                      </svg>
-                      <p className="text-gray-500">No to-do tasks found</p>
+                      )}
                     </div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {assignedTasks.length > 0 ? (
-                    assignedTasks.map((task) => (
-                      <div key={task.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-3 mb-2">
-                              <h3 className="font-semibold text-gray-900">{task.title}</h3>
-                              <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(task.status)}`}>
-                                {task.status}
-                              </span>
-                              <div className="flex items-center space-x-1">
-                                <div className={`w-3 h-3 rounded-full ${getPriorityColor(task.priority)}`}></div>
-                                <span className="text-xs text-gray-500 capitalize">{task.priority}</span>
+                  </CardContent>
+                </Card>
+
+                {/* Completed & Not Approved To-Do Tasks */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold text-yellow-700">
+                      Completed & Awaiting Approval ({completedNotApprovedUserTasks.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      {completedNotApprovedUserTasks.length > 0 ? (
+                        completedNotApprovedUserTasks.map((task) => (
+                          <div key={task.id} className="border border-yellow-200 bg-yellow-50 rounded-lg p-4 hover:shadow-md transition-shadow">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-3 mb-2">
+                                  <h3 className="font-semibold text-gray-900">{task.title}</h3>
+                                  <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full border bg-yellow-100 text-yellow-800 border-yellow-200">
+                                    {task.approvalStatus === 'pending' ? 'Pending Approval' : 'Awaiting Approval'}
+                                  </span>
+                                  <div className="flex items-center space-x-1">
+                                    <div className={`w-3 h-3 rounded-full ${getPriorityColor(task.priority)}`}></div>
+                                    <span className="text-xs text-gray-500 capitalize">{task.priority}</span>
+                                  </div>
+                                </div>
+                                {task.description && (
+                                  <p className="text-sm text-gray-600 mb-2">{task.description}</p>
+                                )}
+                                <div className="flex items-center space-x-4 text-xs text-gray-500">
+                                  <span>Created: {new Date(task.createdDate).toLocaleDateString()}</span>
+                                  {task.dueDate && (
+                                    <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                {!task.approvalStatus && (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleRequestApproval(task)}
+                                    className="bg-green-600 hover:bg-green-700"
+                                  >
+                                    Request Approval
+                                  </Button>
+                                )}
+                                <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
                               </div>
                             </div>
-                            {task.description && (
-                              <p className="text-sm text-gray-600 mb-2">{task.description}</p>
-                            )}
-                            <div className="flex items-center space-x-4 text-xs text-gray-500">
-                              <span>Assigned by: {task.assignedBy}</span>
-                              <span>Created: {new Date(task.createdDate).toLocaleDateString()}</span>
-                              {task.dueDate && (
-                                <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
-                              )}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8">
+                          <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <p className="text-gray-500">No tasks awaiting approval</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Completed & Approved To-Do Tasks */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold text-green-700">
+                      Completed & Approved Tasks ({completedApprovedUserTasks.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      {completedApprovedUserTasks.length > 0 ? (
+                        completedApprovedUserTasks.map((task) => (
+                          <div key={task.id} className="border border-green-200 bg-green-50 rounded-lg p-4 hover:shadow-md transition-shadow">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-3 mb-2">
+                                  <h3 className="font-semibold text-gray-900">{task.title}</h3>
+                                  <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full border bg-green-100 text-green-800 border-green-200">
+                                    Approved
+                                  </span>
+                                  <div className="flex items-center space-x-1">
+                                    <div className={`w-3 h-3 rounded-full ${getPriorityColor(task.priority)}`}></div>
+                                    <span className="text-xs text-gray-500 capitalize">{task.priority}</span>
+                                  </div>
+                                </div>
+                                {task.description && (
+                                  <p className="text-sm text-gray-600 mb-2">{task.description}</p>
+                                )}
+                                <div className="flex items-center space-x-4 text-xs text-gray-500">
+                                  <span>Created: {new Date(task.createdDate).toLocaleDateString()}</span>
+                                  {task.approvedBy && (
+                                    <span>Approved by: {task.approvedBy}</span>
+                                  )}
+                                  {task.approvedDate && (
+                                    <span>Approved: {new Date(task.approvedDate).toLocaleDateString()}</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center">
+                                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                              </div>
                             </div>
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleToggleStatus(task.id)}
-                            >
-                              {task.status === 'completed' ? 'Mark Pending' : 'Mark Complete'}
-                            </Button>
-                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8">
+                          <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <p className="text-gray-500">No approved tasks found</p>
                         </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8">
-                      <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                      </svg>
-                      <p className="text-gray-500">No assigned tasks found</p>
+                      )}
                     </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  </CardContent>
+                </Card>
+
+                {/* Rejected To-Do Tasks */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold text-red-700">
+                      Rejected Tasks ({rejectedUserTasks.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      {rejectedUserTasks.length > 0 ? (
+                        rejectedUserTasks.map((task) => (
+                          <div key={task.id} className="border border-red-200 bg-red-50 rounded-lg p-4 hover:shadow-md transition-shadow">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-3 mb-2">
+                                  <h3 className="font-semibold text-gray-900">{task.title}</h3>
+                                  <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full border bg-red-100 text-red-800 border-red-200">
+                                    Rejected
+                                  </span>
+                                  <div className="flex items-center space-x-1">
+                                    <div className={`w-3 h-3 rounded-full ${getPriorityColor(task.priority)}`}></div>
+                                    <span className="text-xs text-gray-500 capitalize">{task.priority}</span>
+                                  </div>
+                                </div>
+                                {task.description && (
+                                  <p className="text-sm text-gray-600 mb-2">{task.description}</p>
+                                )}
+                                <div className="flex items-center space-x-4 text-xs text-gray-500">
+                                  <span>Created: {new Date(task.createdDate).toLocaleDateString()}</span>
+                                  {task.approvedBy && (
+                                    <span>Rejected by: {task.approvedBy}</span>
+                                  )}
+                                  {task.approvedDate && (
+                                    <span>Rejected: {new Date(task.approvedDate).toLocaleDateString()}</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleToggleStatus(task.id)}
+                                  className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                                >
+                                  Reopen Task
+                                </Button>
+                                <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8">
+                          <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          <p className="text-gray-500">No rejected tasks found</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
+              <>
+                {/* Pending Assigned Tasks */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold text-gray-900">
+                      Pending Assigned Tasks ({pendingAssignedTasks.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      {pendingAssignedTasks.length > 0 ? (
+                        pendingAssignedTasks.map((task) => (
+                          <div key={task.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-3 mb-2">
+                                  <h3 className="font-semibold text-gray-900">{task.title}</h3>
+                                  <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(task.status)}`}>
+                                    {task.status}
+                                  </span>
+                                  <div className="flex items-center space-x-1">
+                                    <div className={`w-3 h-3 rounded-full ${getPriorityColor(task.priority)}`}></div>
+                                    <span className="text-xs text-gray-500 capitalize">{task.priority}</span>
+                                  </div>
+                                </div>
+                                {task.description && (
+                                  <p className="text-sm text-gray-600 mb-2">{task.description}</p>
+                                )}
+                                <div className="flex items-center space-x-4 text-xs text-gray-500">
+                                  <span>Assigned by: {task.assignedBy}</span>
+                                  <span>Created: {new Date(task.createdDate).toLocaleDateString()}</span>
+                                  {task.dueDate && (
+                                    <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleToggleStatus(task.id)}
+                                >
+                                  {task.status === 'completed' ? 'Mark Pending' : 'Mark Complete'}
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8">
+                          <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                          </svg>
+                          <p className="text-gray-500">No pending assigned tasks found</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Completed Assigned Tasks */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold text-blue-700">
+                      Completed Assigned Tasks ({completedAssignedTasks.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      {completedAssignedTasks.length > 0 ? (
+                        completedAssignedTasks.map((task) => (
+                          <div key={task.id} className="border border-blue-200 bg-blue-50 rounded-lg p-4 hover:shadow-md transition-shadow">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-3 mb-2">
+                                  <h3 className="font-semibold text-gray-900">{task.title}</h3>
+                                  <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full border bg-blue-100 text-blue-800 border-blue-200">
+                                    Completed
+                                  </span>
+                                  <div className="flex items-center space-x-1">
+                                    <div className={`w-3 h-3 rounded-full ${getPriorityColor(task.priority)}`}></div>
+                                    <span className="text-xs text-gray-500 capitalize">{task.priority}</span>
+                                  </div>
+                                </div>
+                                {task.description && (
+                                  <p className="text-sm text-gray-600 mb-2">{task.description}</p>
+                                )}
+                                <div className="flex items-center space-x-4 text-xs text-gray-500">
+                                  <span>Assigned by: {task.assignedBy}</span>
+                                  <span>Created: {new Date(task.createdDate).toLocaleDateString()}</span>
+                                  {task.dueDate && (
+                                    <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center">
+                                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8">
+                          <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <p className="text-gray-500">No completed assigned tasks found</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Rejected Assigned Tasks */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold text-red-700">
+                      Rejected Assigned Tasks ({rejectedAssignedTasks.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      {rejectedAssignedTasks.length > 0 ? (
+                        rejectedAssignedTasks.map((task) => (
+                          <div key={task.id} className="border border-red-200 bg-red-50 rounded-lg p-4 hover:shadow-md transition-shadow">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-3 mb-2">
+                                  <h3 className="font-semibold text-gray-900">{task.title}</h3>
+                                  <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full border bg-red-100 text-red-800 border-red-200">
+                                    Rejected
+                                  </span>
+                                  <div className="flex items-center space-x-1">
+                                    <div className={`w-3 h-3 rounded-full ${getPriorityColor(task.priority)}`}></div>
+                                    <span className="text-xs text-gray-500 capitalize">{task.priority}</span>
+                                  </div>
+                                </div>
+                                {task.description && (
+                                  <p className="text-sm text-gray-600 mb-2">{task.description}</p>
+                                )}
+                                <div className="flex items-center space-x-4 text-xs text-gray-500">
+                                  <span>Assigned by: {task.assignedBy}</span>
+                                  <span>Created: {new Date(task.createdDate).toLocaleDateString()}</span>
+                                  {task.approvedBy && (
+                                    <span>Rejected by: {task.approvedBy}</span>
+                                  )}
+                                  {task.approvedDate && (
+                                    <span>Rejected: {new Date(task.approvedDate).toLocaleDateString()}</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleToggleStatus(task.id)}
+                                  className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                                >
+                                  Restart Task
+                                </Button>
+                                <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8">
+                          <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          <p className="text-gray-500">No rejected assigned tasks found</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
+          </div>
 
           {/* Add Task Modal */}
           <Modal
