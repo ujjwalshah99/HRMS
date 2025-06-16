@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 import { AttendanceRecord } from '@/types';
 
@@ -141,14 +142,81 @@ export default function EmployeeAttendance() {
     }).length
   };
 
+  const handleDownloadAttendance = () => {
+    const monthName = monthNames[currentDate.getMonth()];
+    const year = currentDate.getFullYear();
+
+    // Create CSV content
+    const csvContent = [
+      ['Monthly Attendance Report'],
+      ['Employee', user?.name || 'Employee'],
+      ['Month', `${monthName} ${year}`],
+      [''],
+      ['Date', 'Day', 'Status', 'Check In', 'Check Out', 'Working Hours'],
+      ...Array.from({ length: daysInMonth }, (_, index) => {
+        const day = index + 1;
+        const dateString = `${year}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const attendance = attendanceRecords.find(record => record.date === dateString);
+        const holiday = holidays.find(h => h.date === dateString);
+        const dayName = dayNames[new Date(dateString).getDay()];
+
+        if (holiday) {
+          return [dateString, dayName, 'Holiday', '-', '-', '-'];
+        } else if (attendance) {
+          return [
+            dateString,
+            dayName,
+            attendance.status,
+            attendance.checkInTime || '-',
+            attendance.checkOutTime || '-',
+            attendance.workingHours ? `${attendance.workingHours} hours` : '-'
+          ];
+        } else {
+          return [dateString, dayName, 'No Record', '-', '-', '-'];
+        }
+      }),
+      [''],
+      ['Summary'],
+      ['Present Days', breakdown.present.toString()],
+      ['Absent Days', breakdown.absent.toString()],
+      ['Late Days', breakdown.late.toString()],
+      ['Half Days', breakdown.halfDay.toString()],
+      ['Leave Days', breakdown.leave.toString()],
+      ['Holidays', breakdown.holidays.toString()],
+      ['Total Working Days', (daysInMonth - breakdown.holidays).toString()]
+    ].map(row => row.join(',')).join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Attendance_${monthName}_${year}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <ProtectedRoute allowedRoles={['employee']}>
       <Layout employeeName={user?.name || "Employee"} profilePicture={user?.profilePicture}>
         <div className="space-y-6">
           {/* Header */}
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Attendance</h1>
-            <p className="text-gray-600">View your attendance history and calendar</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Attendance</h1>
+              <p className="text-gray-600">View your attendance history and calendar</p>
+            </div>
+            <Button
+              onClick={handleDownloadAttendance}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Download Monthly Attendance
+            </Button>
           </div>
 
           {/* Calendar */}

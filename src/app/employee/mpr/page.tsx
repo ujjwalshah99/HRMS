@@ -1,10 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Layout } from '@/components/layout/Layout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+
 import { useAuth } from '@/contexts/AuthContext';
 
 interface MPRData {
@@ -25,6 +27,8 @@ interface MPRData {
 
 export default function EmployeeMPR() {
   const { user } = useAuth();
+  const router = useRouter();
+
   
   const [mprReports] = useState<MPRData[]>([
     {
@@ -135,22 +139,119 @@ export default function EmployeeMPR() {
     });
   };
 
+  const handleViewDetails = (month: string, year: number) => {
+    router.push(`/employee/mpr/${month.toLowerCase()}/${year}`);
+  };
+
+  const handleDownloadReport = (report: MPRData) => {
+    // Mock task data for the month (this would come from API in real implementation)
+    const mockTasks = [
+      {
+        id: '1',
+        title: 'Implement Authentication System',
+        description: 'Design and implement secure user authentication with JWT tokens and role-based access control.',
+        priority: 'high',
+        status: 'completed',
+        startDate: `${report.year}-${report.month === 'December' ? '12' : report.month === 'November' ? '11' : '10'}-01`,
+        completedDate: `${report.year}-${report.month === 'December' ? '12' : report.month === 'November' ? '11' : '10'}-15`,
+        estimatedHours: 40,
+        actualHours: 38,
+        category: 'Backend Development',
+        assignedBy: 'Sarah Johnson'
+      },
+      {
+        id: '2',
+        title: 'Optimize Database Queries',
+        description: 'Review and optimize slow database queries to improve application performance.',
+        priority: 'medium',
+        status: 'completed',
+        startDate: `${report.year}-${report.month === 'December' ? '12' : report.month === 'November' ? '11' : '10'}-05`,
+        completedDate: `${report.year}-${report.month === 'December' ? '12' : report.month === 'November' ? '11' : '10'}-20`,
+        estimatedHours: 20,
+        actualHours: 25,
+        category: 'Database',
+        assignedBy: 'Sarah Johnson'
+      },
+      {
+        id: '3',
+        title: 'Create User Dashboard',
+        description: 'Design and implement responsive user dashboard with real-time data visualization.',
+        priority: 'high',
+        status: 'completed',
+        startDate: `${report.year}-${report.month === 'December' ? '12' : report.month === 'November' ? '11' : '10'}-10`,
+        completedDate: `${report.year}-${report.month === 'December' ? '12' : report.month === 'November' ? '11' : '10'}-28`,
+        estimatedHours: 35,
+        actualHours: 32,
+        category: 'Frontend Development',
+        assignedBy: 'Sarah Johnson'
+      },
+      {
+        id: '4',
+        title: 'API Documentation',
+        description: 'Create comprehensive API documentation using Swagger/OpenAPI specifications.',
+        priority: 'medium',
+        status: 'in-progress',
+        startDate: `${report.year}-${report.month === 'December' ? '12' : report.month === 'November' ? '11' : '10'}-20`,
+        estimatedHours: 15,
+        actualHours: 8,
+        category: 'Documentation',
+        assignedBy: 'Sarah Johnson'
+      },
+      {
+        id: '5',
+        title: 'Unit Test Coverage',
+        description: 'Increase unit test coverage to 90% for critical application modules.',
+        priority: 'low',
+        status: 'pending',
+        startDate: `${report.year}-${report.month === 'December' ? '12' : report.month === 'November' ? '11' : '10'}-25`,
+        estimatedHours: 25,
+        category: 'Testing',
+        assignedBy: 'Sarah Johnson'
+      }
+    ];
+
+    // Create CSV content with task details only
+    const csvContent = [
+      ['Task Details Report'],
+      ['Month', `${report.month} ${report.year}`],
+      ['Employee', 'John Doe'],
+      [''],
+      ['Task ID', 'Title', 'Description', 'Priority', 'Status', 'Category', 'Start Date', 'Completed Date', 'Estimated Hours', 'Actual Hours', 'Assigned By'],
+      ...mockTasks.map(task => [
+        task.id,
+        task.title,
+        task.description,
+        task.priority,
+        task.status,
+        task.category,
+        task.startDate,
+        task.completedDate || 'Not completed',
+        task.estimatedHours.toString(),
+        task.actualHours ? task.actualHours.toString() : 'Not recorded',
+        task.assignedBy || 'Not assigned'
+      ])
+    ].map(row => row.join(',')).join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Tasks_${report.month}_${report.year}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <ProtectedRoute allowedRoles={['employee']}>
       <Layout employeeName={user?.name || "Employee"} profilePicture={user?.profilePicture}>
         <div className="space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Monthly Progress Reports</h1>
-              <p className="text-gray-600">Track your monthly achievements and progress</p>
-            </div>
-            <Button className="bg-blue-600 hover:bg-blue-700">
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Create New MPR
-            </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Monthly Progress Reports</h1>
+            <p className="text-gray-600">Track your monthly achievements and progress</p>
           </div>
 
           {/* MPR Summary Stats */}
@@ -159,7 +260,7 @@ export default function EmployeeMPR() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-blue-600">Total Reports</p>
+                    <p className="text-sm font-medium text-blue-600">Total Tasks</p>
                     <p className="text-3xl font-bold text-blue-900">{mprReports.length}</p>
                   </div>
                   <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
@@ -175,7 +276,7 @@ export default function EmployeeMPR() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-green-600">Approved</p>
+                    <p className="text-sm font-medium text-green-600">Completed Task</p>
                     <p className="text-3xl font-bold text-green-900">
                       {mprReports.filter(r => r.status === 'approved').length}
                     </p>
@@ -256,9 +357,26 @@ export default function EmployeeMPR() {
                           )}
                         </div>
                       </div>
-                      <Button size="sm" variant="outline">
-                        View Details
-                      </Button>
+                      <div className="flex space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleViewDetails(report.month, report.year)}
+                        >
+                          View Details
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDownloadReport(report)}
+                          className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+                        >
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          Download
+                        </Button>
+                      </div>
                     </div>
 
                     {/* Performance Metrics */}

@@ -89,7 +89,7 @@ export const TodoList: React.FC<TodoListProps> = ({ todos, onToggleTodo }) => {
             </svg>
             <span>Todo List</span>
           </CardTitle>
-          <Link href="/employee/todos">
+          <Link href="/employee/tasks">
             <Button
               size="sm"
               variant="outline"

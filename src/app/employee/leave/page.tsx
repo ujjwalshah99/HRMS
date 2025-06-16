@@ -150,7 +150,7 @@ export default function EmployeeLeave() {
           </div>
 
           {/* Leave Statistics */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card className="bg-blue-50 border-blue-200">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -171,7 +171,7 @@ export default function EmployeeLeave() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-red-600">Used Leaves</p>
+                    <p className="text-sm font-medium text-red-600">Leaves Taken</p>
                     <p className="text-3xl font-bold text-red-900">{leaveStats.usedLeaves}</p>
                   </div>
                   <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
@@ -187,7 +187,7 @@ export default function EmployeeLeave() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-green-600">Remaining</p>
+                    <p className="text-sm font-medium text-green-600">Leaves Remaining</p>
                     <p className="text-3xl font-bold text-green-900">{leaveStats.remainingLeaves}</p>
                   </div>
                   <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
@@ -198,25 +198,10 @@ export default function EmployeeLeave() {
                 </div>
               </CardContent>
             </Card>
+          </div>
 
-            <Card className="bg-yellow-50 border-yellow-200">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-yellow-600">Pending</p>
-                    <p className="text-3xl font-bold text-yellow-900">{leaveStats.pendingRequests}</p>
-                  </div>
-                  <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                    <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-          {/* Leave Requests */}
-          <Card>
+          {/* Leave Requests - Full Screen */}
+          <Card className="min-h-[calc(100vh-200px)]">
             <CardHeader>
               <CardTitle>All Leave Requests ({appliedLeaves.length})</CardTitle>
             </CardHeader>
@@ -270,7 +255,6 @@ export default function EmployeeLeave() {
                 )}
               </CardContent>
             </Card>
-          </div>
 
           {/* Leave Application Modal */}
           <Modal
