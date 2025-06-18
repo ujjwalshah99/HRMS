@@ -21,16 +21,24 @@ interface Task {
   approvalStatus?: 'pending' | 'approved' | 'rejected';
   approvedBy?: string;
   approvedDate?: string;
+  rejectionRemarks?: string;
 }
 
 export default function EmployeeTasks() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'todo' | 'assigned'>('todo');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
+
+  // To-Do Tasks State
+  const [isTodoModalOpen, setIsTodoModalOpen] = useState(false);
+  const [isTodoEditModalOpen, setIsTodoEditModalOpen] = useState(false);
+  const [isTodoApprovalModalOpen, setIsTodoApprovalModalOpen] = useState(false);
+  const [selectedTodoTask, setSelectedTodoTask] = useState<Task | null>(null);
+  const [editingTodoTask, setEditingTodoTask] = useState<Task | null>(null);
+
+  // Assigned Tasks State
+  const [isAssignedEditModalOpen, setIsAssignedEditModalOpen] = useState(false);
+  const [selectedAssignedTask, setSelectedAssignedTask] = useState<Task | null>(null);
+  const [editingAssignedTask, setEditingAssignedTask] = useState<Task | null>(null);
 
   const [tasks, setTasks] = useState<Task[]>([
     {
@@ -62,7 +70,8 @@ export default function EmployeeTasks() {
       status: 'completed',
       type: 'assigned',
       assignedBy: 'Sarah Johnson',
-      createdDate: '2024-01-10'
+      createdDate: '2024-01-10',
+      approvalStatus: 'pending'
     },
     {
       id: '4',
@@ -96,7 +105,10 @@ export default function EmployeeTasks() {
       status: 'completed',
       type: 'assigned',
       assignedBy: 'Lisa Chen',
-      createdDate: '2024-01-05'
+      createdDate: '2024-01-05',
+      approvalStatus: 'approved',
+      approvedBy: 'Lisa Chen',
+      approvedDate: '2024-01-07'
     },
     {
       id: '7',
@@ -118,7 +130,8 @@ export default function EmployeeTasks() {
       createdDate: '2024-01-11',
       approvalStatus: 'rejected',
       approvedBy: 'Sarah Johnson',
-      approvedDate: '2024-01-15'
+      approvedDate: '2024-01-15',
+      rejectionRemarks: 'The optimization approach needs to be more comprehensive. Please include database query optimization and implement proper caching mechanisms before resubmitting.'
     },
     {
       id: '9',
@@ -131,7 +144,8 @@ export default function EmployeeTasks() {
       createdDate: '2024-01-09',
       approvalStatus: 'rejected',
       approvedBy: 'Mike Wilson',
-      approvedDate: '2024-01-16'
+      approvedDate: '2024-01-16',
+      rejectionRemarks: 'The current implementation does not follow our security standards. Please review the security guidelines and implement proper encryption for payment data.'
     }
   ]);
 
@@ -183,7 +197,7 @@ export default function EmployeeTasks() {
     }
   };
 
-  const handleAddTask = () => {
+  const handleAddTodoTask = () => {
     if (newTask.title.trim()) {
       const task: Task = {
         id: Date.now().toString(),
@@ -197,7 +211,7 @@ export default function EmployeeTasks() {
       };
       setTasks([task, ...tasks]);
       setNewTask({ title: '', description: '', priority: 'medium', dueDate: '' });
-      setIsModalOpen(false);
+      setIsTodoModalOpen(false);
     }
   };
 
@@ -206,51 +220,57 @@ export default function EmployeeTasks() {
       task.id === taskId
         ? {
             ...task,
-            status: task.status === 'completed' ? 'pending' : 'completed',
-            // Reset approval status when reopening a rejected task
+            // Handle status changes based on current state
+            status: task.approvalStatus === 'rejected'
+              ? 'pending' // When restarting a rejected task, set to pending
+              : task.status === 'completed' ? 'pending' : 'completed',
+            // For assigned tasks, when marked complete, automatically set to pending approval
+            ...(task.type === 'assigned' && task.status !== 'completed' && task.approvalStatus !== 'rejected' && { approvalStatus: 'pending' as const }),
+            // Reset approval status when reopening a rejected task, but keep remarks for reference
             ...(task.approvalStatus === 'rejected' && { approvalStatus: undefined, approvedBy: undefined, approvedDate: undefined })
+            // Note: rejectionRemarks are preserved when reopening
           }
         : task
     ));
   };
 
-  const handleRequestApproval = (task: Task) => {
-    setSelectedTask(task);
-    setIsApprovalModalOpen(true);
+  const handleRequestTodoApproval = (task: Task) => {
+    setSelectedTodoTask(task);
+    setIsTodoApprovalModalOpen(true);
   };
 
-  const submitForApproval = () => {
-    if (selectedTask && selectedManager) {
+  const submitTodoForApproval = () => {
+    if (selectedTodoTask && selectedManager) {
       // Update the task with approval status
       setTasks(tasks.map(task =>
-        task.id === selectedTask.id
+        task.id === selectedTodoTask.id
           ? { ...task, approvalStatus: 'pending' as const }
           : task
       ));
 
       // In a real app, this would send the task to the selected manager for approval
-      console.log(`Task "${selectedTask.title}" submitted to ${selectedManager} for approval`);
-      setIsApprovalModalOpen(false);
-      setSelectedTask(null);
+      console.log(`Task "${selectedTodoTask.title}" submitted to ${selectedManager} for approval`);
+      setIsTodoApprovalModalOpen(false);
+      setSelectedTodoTask(null);
       setSelectedManager('');
     }
   };
 
-  const handleEditTask = (task: Task) => {
-    setEditingTask(task);
+  const handleEditTodoTask = (task: Task) => {
+    setEditingTodoTask(task);
     setEditTask({
       title: task.title,
       description: task.description || '',
       priority: task.priority,
       dueDate: task.dueDate || ''
     });
-    setIsEditModalOpen(true);
+    setIsTodoEditModalOpen(true);
   };
 
-  const handleUpdateTask = () => {
-    if (editingTask && editTask.title.trim()) {
+  const handleUpdateTodoTask = () => {
+    if (editingTodoTask && editTask.title.trim()) {
       setTasks(tasks.map(task =>
-        task.id === editingTask.id
+        task.id === editingTodoTask.id
           ? {
               ...task,
               title: editTask.title,
@@ -260,8 +280,38 @@ export default function EmployeeTasks() {
             }
           : task
       ));
-      setIsEditModalOpen(false);
-      setEditingTask(null);
+      setIsTodoEditModalOpen(false);
+      setEditingTodoTask(null);
+      setEditTask({ title: '', description: '', priority: 'medium', dueDate: '' });
+    }
+  };
+
+  const handleEditAssignedTask = (task: Task) => {
+    setEditingAssignedTask(task);
+    setEditTask({
+      title: task.title,
+      description: task.description || '',
+      priority: task.priority,
+      dueDate: task.dueDate || ''
+    });
+    setIsAssignedEditModalOpen(true);
+  };
+
+  const handleUpdateAssignedTask = () => {
+    if (editingAssignedTask && editTask.title.trim()) {
+      setTasks(tasks.map(task =>
+        task.id === editingAssignedTask.id
+          ? {
+              ...task,
+              title: editTask.title,
+              description: editTask.description,
+              priority: editTask.priority,
+              dueDate: editTask.dueDate
+            }
+          : task
+      ));
+      setIsAssignedEditModalOpen(false);
+      setEditingAssignedTask(null);
       setEditTask({ title: '', description: '', priority: 'medium', dueDate: '' });
     }
   };
@@ -282,8 +332,11 @@ export default function EmployeeTasks() {
   const pendingAssignedTasks = tasks.filter(task =>
     task.type === 'assigned' && task.status !== 'completed' && task.approvalStatus !== 'rejected'
   );
-  const completedAssignedTasks = tasks.filter(task =>
-    task.type === 'assigned' && task.status === 'completed'
+  const completedAwaitingApprovalAssignedTasks = tasks.filter(task =>
+    task.type === 'assigned' && task.status === 'completed' && task.approvalStatus === 'pending'
+  );
+  const completedApprovedAssignedTasks = tasks.filter(task =>
+    task.type === 'assigned' && task.status === 'completed' && task.approvalStatus === 'approved'
   );
   const rejectedAssignedTasks = tasks.filter(task =>
     task.type === 'assigned' && task.approvalStatus === 'rejected'
@@ -302,8 +355,8 @@ export default function EmployeeTasks() {
               <h1 className="text-2xl font-bold text-gray-900">Tasks</h1>
               <p className="text-gray-600">Manage your tasks and assignments</p>
             </div>
-            <Button 
-              onClick={() => setIsModalOpen(true)}
+            <Button
+              onClick={() => setIsTodoModalOpen(true)}
               className="bg-blue-600 hover:bg-blue-700"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -369,7 +422,7 @@ export default function EmployeeTasks() {
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                Assigned Tasks ({pendingAssignedTasks.length + completedAssignedTasks.length + rejectedAssignedTasks.length})
+                Assigned Tasks ({pendingAssignedTasks.length + completedAwaitingApprovalAssignedTasks.length + completedApprovedAssignedTasks.length + rejectedAssignedTasks.length})
               </button>
             </nav>
           </div>
@@ -405,6 +458,19 @@ export default function EmployeeTasks() {
                                 {task.description && (
                                   <p className="text-sm text-gray-600 mb-2">{task.description}</p>
                                 )}
+                                {task.rejectionRemarks && (
+                                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-2">
+                                    <div className="flex items-start space-x-2">
+                                      <svg className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
+                                      </svg>
+                                      <div className="flex-1">
+                                        <p className="text-xs font-medium text-red-800 mb-1">Manager Remarks:</p>
+                                        <p className="text-xs text-red-700">{task.rejectionRemarks}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
                                 <div className="flex items-center space-x-4 text-xs text-gray-500">
                                   <span>Created: {new Date(task.createdDate).toLocaleDateString()}</span>
                                   {task.dueDate && (
@@ -423,7 +489,7 @@ export default function EmployeeTasks() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => handleEditTask(task)}
+                                  onClick={() => handleEditTodoTask(task)}
                                   className="text-blue-600 border-blue-600 hover:bg-blue-50"
                                 >
                                   <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -434,7 +500,7 @@ export default function EmployeeTasks() {
                                 {task.status === 'completed' && !task.approvalStatus && (
                                   <Button
                                     size="sm"
-                                    onClick={() => handleRequestApproval(task)}
+                                    onClick={() => handleRequestTodoApproval(task)}
                                     className="bg-green-600 hover:bg-green-700"
                                   >
                                     Request Approval
@@ -494,7 +560,7 @@ export default function EmployeeTasks() {
                                 {!task.approvalStatus && (
                                   <Button
                                     size="sm"
-                                    onClick={() => handleRequestApproval(task)}
+                                    onClick={() => handleRequestTodoApproval(task)}
                                     className="bg-green-600 hover:bg-green-700"
                                   >
                                     Request Approval
@@ -603,6 +669,19 @@ export default function EmployeeTasks() {
                                 {task.description && (
                                   <p className="text-sm text-gray-600 mb-2">{task.description}</p>
                                 )}
+                                {task.rejectionRemarks && (
+                                  <div className="bg-red-100 border border-red-300 rounded-lg p-3 mb-2">
+                                    <div className="flex items-start space-x-2">
+                                      <svg className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
+                                      </svg>
+                                      <div className="flex-1">
+                                        <p className="text-xs font-medium text-red-800 mb-1">Rejection Remarks:</p>
+                                        <p className="text-xs text-red-700">{task.rejectionRemarks}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
                                 <div className="flex items-center space-x-4 text-xs text-gray-500">
                                   <span>Created: {new Date(task.createdDate).toLocaleDateString()}</span>
                                   {task.approvedBy && (
@@ -670,6 +749,19 @@ export default function EmployeeTasks() {
                                 {task.description && (
                                   <p className="text-sm text-gray-600 mb-2">{task.description}</p>
                                 )}
+                                {task.rejectionRemarks && (
+                                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-2">
+                                    <div className="flex items-start space-x-2">
+                                      <svg className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
+                                      </svg>
+                                      <div className="flex-1">
+                                        <p className="text-xs font-medium text-red-800 mb-1">Manager Remarks:</p>
+                                        <p className="text-xs text-red-700">{task.rejectionRemarks}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
                                 <div className="flex items-center space-x-4 text-xs text-gray-500">
                                   <span>Assigned by: {task.assignedBy}</span>
                                   <span>Created: {new Date(task.createdDate).toLocaleDateString()}</span>
@@ -685,6 +777,17 @@ export default function EmployeeTasks() {
                                   onClick={() => handleToggleStatus(task.id)}
                                 >
                                   {task.status === 'completed' ? 'Mark Pending' : 'Mark Complete'}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleEditAssignedTask(task)}
+                                  className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                                >
+                                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                  Edit
                                 </Button>
                               </div>
                             </div>
@@ -702,24 +805,24 @@ export default function EmployeeTasks() {
                   </CardContent>
                 </Card>
 
-                {/* Completed Assigned Tasks */}
+                {/* Completed & Awaiting Approval Assigned Tasks */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg font-semibold text-blue-700">
-                      Completed Assigned Tasks ({completedAssignedTasks.length})
+                    <CardTitle className="text-lg font-semibold text-yellow-700">
+                      Completed & Awaiting Approval ({completedAwaitingApprovalAssignedTasks.length})
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-6">
                     <div className="space-y-4">
-                      {completedAssignedTasks.length > 0 ? (
-                        completedAssignedTasks.map((task) => (
-                          <div key={task.id} className="border border-blue-200 bg-blue-50 rounded-lg p-4 hover:shadow-md transition-shadow">
+                      {completedAwaitingApprovalAssignedTasks.length > 0 ? (
+                        completedAwaitingApprovalAssignedTasks.map((task) => (
+                          <div key={task.id} className="border border-yellow-200 bg-yellow-50 rounded-lg p-4 hover:shadow-md transition-shadow">
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
                                 <div className="flex items-center space-x-3 mb-2">
                                   <h3 className="font-semibold text-gray-900">{task.title}</h3>
-                                  <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full border bg-blue-100 text-blue-800 border-blue-200">
-                                    Completed
+                                  <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full border bg-yellow-100 text-yellow-800 border-yellow-200">
+                                    Pending Approval
                                   </span>
                                   <div className="flex items-center space-x-1">
                                     <div className={`w-3 h-3 rounded-full ${getPriorityColor(task.priority)}`}></div>
@@ -738,7 +841,65 @@ export default function EmployeeTasks() {
                                 </div>
                               </div>
                               <div className="flex items-center">
-                                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8">
+                          <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <p className="text-gray-500">No tasks awaiting approval</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Completed & Approved Assigned Tasks */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold text-green-700">
+                      Completed & Approved Tasks ({completedApprovedAssignedTasks.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      {completedApprovedAssignedTasks.length > 0 ? (
+                        completedApprovedAssignedTasks.map((task) => (
+                          <div key={task.id} className="border border-green-200 bg-green-50 rounded-lg p-4 hover:shadow-md transition-shadow">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-3 mb-2">
+                                  <h3 className="font-semibold text-gray-900">{task.title}</h3>
+                                  <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full border bg-green-100 text-green-800 border-green-200">
+                                    Approved
+                                  </span>
+                                  <div className="flex items-center space-x-1">
+                                    <div className={`w-3 h-3 rounded-full ${getPriorityColor(task.priority)}`}></div>
+                                    <span className="text-xs text-gray-500 capitalize">{task.priority}</span>
+                                  </div>
+                                </div>
+                                {task.description && (
+                                  <p className="text-sm text-gray-600 mb-2">{task.description}</p>
+                                )}
+                                <div className="flex items-center space-x-4 text-xs text-gray-500">
+                                  <span>Assigned by: {task.assignedBy}</span>
+                                  <span>Created: {new Date(task.createdDate).toLocaleDateString()}</span>
+                                  {task.approvedBy && (
+                                    <span>Approved by: {task.approvedBy}</span>
+                                  )}
+                                  {task.approvedDate && (
+                                    <span>Approved: {new Date(task.approvedDate).toLocaleDateString()}</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center">
+                                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                               </div>
@@ -750,7 +911,7 @@ export default function EmployeeTasks() {
                           <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
-                          <p className="text-gray-500">No completed assigned tasks found</p>
+                          <p className="text-gray-500">No approved assigned tasks found</p>
                         </div>
                       )}
                     </div>
@@ -783,6 +944,19 @@ export default function EmployeeTasks() {
                                 </div>
                                 {task.description && (
                                   <p className="text-sm text-gray-600 mb-2">{task.description}</p>
+                                )}
+                                {task.rejectionRemarks && (
+                                  <div className="bg-red-100 border border-red-300 rounded-lg p-3 mb-2">
+                                    <div className="flex items-start space-x-2">
+                                      <svg className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
+                                      </svg>
+                                      <div className="flex-1">
+                                        <p className="text-xs font-medium text-red-800 mb-1">Rejection Remarks:</p>
+                                        <p className="text-xs text-red-700">{task.rejectionRemarks}</p>
+                                      </div>
+                                    </div>
+                                  </div>
                                 )}
                                 <div className="flex items-center space-x-4 text-xs text-gray-500">
                                   <span>Assigned by: {task.assignedBy}</span>
@@ -826,11 +1000,11 @@ export default function EmployeeTasks() {
             )}
           </div>
 
-          {/* Add Task Modal */}
+          {/* Add Todo Task Modal */}
           <Modal
-            isOpen={isModalOpen}
-            onClose={() => setIsModalOpen(false)}
-            title="Add New Task"
+            isOpen={isTodoModalOpen}
+            onClose={() => setIsTodoModalOpen(false)}
+            title="Add New Todo Task"
             size="md"
           >
             <div className="space-y-4">
@@ -891,16 +1065,16 @@ export default function EmployeeTasks() {
 
               <div className="flex space-x-3 pt-4">
                 <Button
-                  onClick={handleAddTask}
+                  onClick={handleAddTodoTask}
                   className="flex-1 bg-blue-600 hover:bg-blue-700"
                   disabled={!newTask.title.trim()}
                 >
-                  Add Task
+                  Add Todo Task
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => {
-                    setIsModalOpen(false);
+                    setIsTodoModalOpen(false);
                     setNewTask({ title: '', description: '', priority: 'medium', dueDate: '' });
                   }}
                   className="flex-1"
@@ -911,19 +1085,19 @@ export default function EmployeeTasks() {
             </div>
           </Modal>
 
-          {/* Approval Request Modal */}
+          {/* Todo Approval Request Modal */}
           <Modal
-            isOpen={isApprovalModalOpen}
-            onClose={() => setIsApprovalModalOpen(false)}
-            title="Request Task Approval"
+            isOpen={isTodoApprovalModalOpen}
+            onClose={() => setIsTodoApprovalModalOpen(false)}
+            title="Request Todo Task Approval"
             size="md"
           >
             <div className="space-y-4">
               <div>
                 <p className="text-sm text-gray-600 mb-4">
-                  Request approval for the completed task: <strong>{selectedTask?.title}</strong>
+                  Request approval for the completed task: <strong>{selectedTodoTask?.title}</strong>
                 </p>
-                
+
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Select Manager *
                 </label>
@@ -943,7 +1117,7 @@ export default function EmployeeTasks() {
 
               <div className="flex space-x-3 pt-4">
                 <Button
-                  onClick={submitForApproval}
+                  onClick={submitTodoForApproval}
                   className="flex-1 bg-green-600 hover:bg-green-700"
                   disabled={!selectedManager}
                 >
@@ -952,8 +1126,8 @@ export default function EmployeeTasks() {
                 <Button
                   variant="outline"
                   onClick={() => {
-                    setIsApprovalModalOpen(false);
-                    setSelectedTask(null);
+                    setIsTodoApprovalModalOpen(false);
+                    setSelectedTodoTask(null);
                     setSelectedManager('');
                   }}
                   className="flex-1"
@@ -964,11 +1138,11 @@ export default function EmployeeTasks() {
             </div>
           </Modal>
 
-          {/* Edit Task Modal */}
+          {/* Edit Todo Task Modal */}
           <Modal
-            isOpen={isEditModalOpen}
-            onClose={() => setIsEditModalOpen(false)}
-            title="Edit Task"
+            isOpen={isTodoEditModalOpen}
+            onClose={() => setIsTodoEditModalOpen(false)}
+            title="Edit Todo Task"
             size="md"
           >
             <div className="space-y-4">
@@ -1029,17 +1203,103 @@ export default function EmployeeTasks() {
 
               <div className="flex space-x-3 pt-4">
                 <Button
-                  onClick={handleUpdateTask}
+                  onClick={handleUpdateTodoTask}
                   className="flex-1 bg-blue-600 hover:bg-blue-700"
                   disabled={!editTask.title.trim()}
                 >
-                  Update Task
+                  Update Todo Task
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => {
-                    setIsEditModalOpen(false);
-                    setEditingTask(null);
+                    setIsTodoEditModalOpen(false);
+                    setEditingTodoTask(null);
+                    setEditTask({ title: '', description: '', priority: 'medium', dueDate: '' });
+                  }}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </Modal>
+
+          {/* Edit Assigned Task Modal */}
+          <Modal
+            isOpen={isAssignedEditModalOpen}
+            onClose={() => setIsAssignedEditModalOpen(false)}
+            title="Edit Assigned Task"
+            size="md"
+          >
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Title *
+                </label>
+                <input
+                  type="text"
+                  value={editTask.title}
+                  onChange={(e) => setEditTask({ ...editTask, title: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter task title..."
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Description
+                </label>
+                <textarea
+                  value={editTask.description}
+                  onChange={(e) => setEditTask({ ...editTask, description: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter description (optional)..."
+                  rows={3}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Priority
+                  </label>
+                  <select
+                    value={editTask.priority}
+                    onChange={(e) => setEditTask({ ...editTask, priority: e.target.value as any })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="low">🟢 Low Priority</option>
+                    <option value="medium">🔵 Medium Priority</option>
+                    <option value="high">🔴 High Priority</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Due Date
+                  </label>
+                  <input
+                    type="date"
+                    value={editTask.dueDate}
+                    onChange={(e) => setEditTask({ ...editTask, dueDate: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex space-x-3 pt-4">
+                <Button
+                  onClick={handleUpdateAssignedTask}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  disabled={!editTask.title.trim()}
+                >
+                  Update Assigned Task
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsAssignedEditModalOpen(false);
+                    setEditingAssignedTask(null);
                     setEditTask({ title: '', description: '', priority: 'medium', dueDate: '' });
                   }}
                   className="flex-1"
