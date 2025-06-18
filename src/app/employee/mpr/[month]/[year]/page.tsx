@@ -191,6 +191,51 @@ export default function MPRDetails() {
     return Math.round((report.completedTasks / report.totalTasks) * 100);
   };
 
+  const handleDownloadReport = () => {
+    // Create CSV content with task details
+    const csvContent = [
+      ['Task Details Report'],
+      ['Month', `${report.month} ${report.year}`],
+      ['Employee', user?.name || 'Employee'],
+      [''],
+      ['Summary'],
+      ['Total Tasks', report.totalTasks.toString()],
+      ['Completed Tasks', report.completedTasks.toString()],
+      ['In Progress Tasks', report.inProgressTasks.toString()],
+      ['Pending Tasks', report.pendingTasks.toString()],
+      ['Completion Rate', `${getCompletionPercentage()}%`],
+      ['Total Hours', report.totalHours.toString()],
+      ['Completed Hours', report.completedHours.toString()],
+      [''],
+      ['Task Details'],
+      ['Task ID', 'Title', 'Description', 'Priority', 'Status', 'Category', 'Start Date', 'Completed Date', 'Estimated Hours', 'Actual Hours', 'Assigned By'],
+      ...report.tasks.map(task => [
+        task.id,
+        task.title,
+        task.description,
+        task.priority,
+        task.status,
+        task.category,
+        task.startDate,
+        task.completedDate || 'Not completed',
+        task.estimatedHours.toString(),
+        task.actualHours ? task.actualHours.toString() : 'Not recorded',
+        task.assignedBy || 'Not assigned'
+      ])
+    ].map(row => row.join(',')).join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Tasks_${report.month}_${report.year}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <ProtectedRoute allowedRoles={['employee']}>
       <Layout employeeName={user?.name || "Employee"} profilePicture={user?.profilePicture}>
@@ -198,8 +243,8 @@ export default function MPRDetails() {
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => router.back()}
                 className="mb-4"
               >
@@ -213,6 +258,15 @@ export default function MPRDetails() {
               </h1>
               <p className="text-gray-600">Detailed breakdown of tasks and achievements</p>
             </div>
+            <Button
+              onClick={handleDownloadReport}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Download Report
+            </Button>
           </div>
 
           {/* Summary Statistics */}
