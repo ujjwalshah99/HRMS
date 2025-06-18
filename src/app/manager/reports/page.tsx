@@ -102,7 +102,7 @@ export default function ManagerReports() {
     const currentDate = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
     // Generate CSV data based on selected employee
-    let csvData = [['Employee', 'Employee ID', 'Completed Tasks', 'Total Tasks', 'Completion Rate', 'Status']];
+    let csvData = [['Employee', 'Employee ID', 'Completed Tasks', 'Total Tasks', 'Completion Rate']];
 
     if (selectedEmployee === 'all') {
       // Generate data for all employees
@@ -112,8 +112,7 @@ export default function ManagerReports() {
           employees.find(e => e.id === emp.id)?.employeeId || '',
           emp.completedTasks.toString(),
           emp.totalTasks.toString(),
-          emp.completionRate.toString() + '%',
-          emp.status
+          emp.completionRate.toString() + '%'
         ]);
       });
     } else {
@@ -125,8 +124,7 @@ export default function ManagerReports() {
           employees.find(e => e.id === empData.id)?.employeeId || '',
           empData.completedTasks.toString(),
           empData.totalTasks.toString(),
-          empData.completionRate.toString() + '%',
-          empData.status
+          empData.completionRate.toString() + '%'
         ]);
       }
     }
@@ -348,7 +346,6 @@ export default function ManagerReports() {
                             <th className="text-left py-3 px-2 font-medium text-gray-700">Completed Tasks</th>
                             <th className="text-left py-3 px-2 font-medium text-gray-700">Total Tasks</th>
                             <th className="text-left py-3 px-2 font-medium text-gray-700">Completion Rate</th>
-                            <th className="text-left py-3 px-2 font-medium text-gray-700">Status</th>
                             <th className="text-left py-3 px-2 font-medium text-gray-700">Actions</th>
                           </tr>
                         </thead>
@@ -380,11 +377,6 @@ export default function ManagerReports() {
                                 <td className="py-3 px-2">
                                   <span className={`font-medium ${getCompletionColor(employee.completionRate)}`}>
                                     {employee.completionRate}%
-                                  </span>
-                                </td>
-                                <td className="py-3 px-2">
-                                  <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(employee.status)}`}>
-                                    {employee.status}
                                   </span>
                                 </td>
                                 <td className="py-3 px-2">

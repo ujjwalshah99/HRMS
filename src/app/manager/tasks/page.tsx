@@ -19,6 +19,7 @@ interface Task {
   dueDate?: string;
   createdDate: string;
   type: 'assigned' | 'approval-request';
+  rejectionRemarks?: string;
 }
 
 export default function ManagerTasks() {
@@ -26,7 +27,10 @@ export default function ManagerTasks() {
   const [activeTab, setActiveTab] = useState<'assigned' | 'approval'>('assigned');
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [rejectingTask, setRejectingTask] = useState<Task | null>(null);
+  const [rejectionRemarks, setRejectionRemarks] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<'all' | 'in-progress' | 'completed' | 'overdue' | 'rejected'>('all');
 
   const [tasks, setTasks] = useState<Task[]>([
@@ -154,12 +158,23 @@ export default function ManagerTasks() {
     ));
   };
 
-  const handleRejectTask = (taskId: string) => {
-    setTasks(tasks.map(task =>
-      task.id === taskId
-        ? { ...task, status: 'rejected' as const }
-        : task
-    ));
+  const handleRejectTask = (task: Task) => {
+    setRejectingTask(task);
+    setRejectionRemarks('');
+    setIsRejectModalOpen(true);
+  };
+
+  const handleConfirmReject = () => {
+    if (rejectingTask) {
+      setTasks(tasks.map(task =>
+        task.id === rejectingTask.id
+          ? { ...task, status: 'rejected' as const, rejectionRemarks: rejectionRemarks }
+          : task
+      ));
+      setIsRejectModalOpen(false);
+      setRejectingTask(null);
+      setRejectionRemarks('');
+    }
   };
 
   const handleDeleteTask = (taskId: string) => {
@@ -419,6 +434,13 @@ export default function ManagerTasks() {
                             {task.description && (
                               <p className="text-sm text-gray-600 mb-2">{task.description}</p>
                             )}
+                            {task.status === 'rejected' && task.rejectionRemarks && (
+                              <div className="bg-red-50 border border-red-200 rounded-md p-2 mb-2">
+                                <p className="text-sm text-red-800">
+                                  <span className="font-medium">Rejection Remarks:</span> {task.rejectionRemarks}
+                                </p>
+                              </div>
+                            )}
                             <div className="flex items-center space-x-4 text-xs text-gray-500">
                               <span>Submitted by: {task.assignedTo}</span>
                               <span>Created: {new Date(task.createdDate).toLocaleDateString()}</span>
@@ -432,10 +454,10 @@ export default function ManagerTasks() {
                             >
                               Approve
                             </Button>
-                            <Button 
-                              size="sm" 
+                            <Button
+                              size="sm"
                               variant="outline"
-                              onClick={() => handleRejectTask(task.id)}
+                              onClick={() => handleRejectTask(task)}
                               className="text-red-600 border-red-600 hover:bg-red-50"
                             >
                               Reject
@@ -667,6 +689,68 @@ export default function ManagerTasks() {
                   <Button
                     variant="outline"
                     onClick={() => setIsEditModalOpen(false)}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+          </Modal>
+
+          {/* Reject Task Modal */}
+          <Modal
+            isOpen={isRejectModalOpen}
+            onClose={() => setIsRejectModalOpen(false)}
+            title="Reject Task"
+            size="md"
+          >
+            {rejectingTask && (
+              <div className="space-y-4">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+                  <div className="flex items-start space-x-3">
+                    <svg className="w-5 h-5 text-yellow-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                    <div>
+                      <h4 className="text-sm font-medium text-yellow-900">Rejecting Task</h4>
+                      <p className="text-sm text-yellow-700 mt-1">
+                        You are about to reject the task: <strong>"{rejectingTask.title}"</strong>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Remarks (Optional)
+                  </label>
+                  <textarea
+                    value={rejectionRemarks}
+                    onChange={(e) => setRejectionRemarks(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter reason for rejection (optional)..."
+                    rows={4}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Adding remarks helps the employee understand why the task was rejected.
+                  </p>
+                </div>
+
+                <div className="flex space-x-3 pt-4">
+                  <Button
+                    onClick={handleConfirmReject}
+                    className="flex-1 bg-red-600 hover:bg-red-700"
+                  >
+                    Confirm Rejection
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsRejectModalOpen(false);
+                      setRejectingTask(null);
+                      setRejectionRemarks('');
+                    }}
                     className="flex-1"
                   >
                     Cancel

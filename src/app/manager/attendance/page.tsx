@@ -12,7 +12,7 @@ export default function ManagerAttendance() {
   const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedEmployee, setSelectedEmployee] = useState('all');
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<any>(null);
 
@@ -119,9 +119,9 @@ export default function ManagerAttendance() {
   const handleDownloadMonthlyReport = () => {
     const selectedEmp = employees.find(emp => emp.id === selectedEmployee);
     const empName = selectedEmp ? selectedEmp.name : 'All Employees';
-    const monthName = new Date(selectedMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const currentDate = new Date(selectedDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
-    // Generate CSV data based on selected employee and month
+    // Generate CSV data based on selected employee and date
     let csvData = [['Employee', 'Employee ID', 'Date', 'Check-In', 'Check-Out', 'Working Hours', 'Status']];
 
     if (selectedEmployee === 'all') {
@@ -130,7 +130,7 @@ export default function ManagerAttendance() {
         csvData.push([
           emp.name,
           emp.employeeId,
-          selectedMonth + '-15', // Mock date for the month
+          selectedDate,
           emp.checkIn,
           emp.checkOut,
           emp.workingHours,
@@ -141,19 +141,15 @@ export default function ManagerAttendance() {
       // Generate data for selected employee
       const empData = attendanceData.find(emp => emp.id === selectedEmployee);
       if (empData) {
-        // Generate multiple entries for the month
-        for (let day = 1; day <= 30; day++) {
-          const date = `${selectedMonth}-${day.toString().padStart(2, '0')}`;
-          csvData.push([
-            empData.name,
-            empData.employeeId,
-            date,
-            empData.checkIn,
-            empData.checkOut,
-            empData.workingHours,
-            empData.status
-          ]);
-        }
+        csvData.push([
+          empData.name,
+          empData.employeeId,
+          selectedDate,
+          empData.checkIn,
+          empData.checkOut,
+          empData.workingHours,
+          empData.status
+        ]);
       }
     }
 
@@ -162,7 +158,7 @@ export default function ManagerAttendance() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${empName}_${monthName}_Attendance_Report.csv`;
+    a.download = `${empName}_${currentDate}_Attendance_Report.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -275,7 +271,7 @@ export default function ManagerAttendance() {
               <CardTitle>Filters</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Date
@@ -302,17 +298,6 @@ export default function ManagerAttendance() {
                       </option>
                     ))}
                   </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Month
-                  </label>
-                  <input
-                    type="month"
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
                 </div>
                 <div className="flex items-end">
                   <Button
