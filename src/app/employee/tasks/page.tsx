@@ -22,6 +22,7 @@ interface Task {
   approvedBy?: string;
   approvedDate?: string;
   rejectionRemarks?: string;
+  submittedTo?: string;
 }
 
 export default function EmployeeTasks() {
@@ -117,8 +118,9 @@ export default function EmployeeTasks() {
       priority: 'medium',
       status: 'completed',
       type: 'user-added',
-      createdDate: '2024-01-13'
-      // No approval status - completed but not approved yet
+      createdDate: '2024-01-13',
+      approvalStatus: 'pending',
+      submittedTo: 'Sarah Johnson'
     },
     {
       id: '8',
@@ -216,6 +218,15 @@ export default function EmployeeTasks() {
   };
 
   const handleToggleStatus = (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+
+    // For to-do tasks, when marking complete, show manager selection popup
+    if (task && task.type === 'user-added' && task.status !== 'completed') {
+      setSelectedTodoTask(task);
+      setIsTodoApprovalModalOpen(true);
+      return;
+    }
+
     setTasks(tasks.map(task =>
       task.id === taskId
         ? {
@@ -241,15 +252,23 @@ export default function EmployeeTasks() {
 
   const submitTodoForApproval = () => {
     if (selectedTodoTask && selectedManager) {
-      // Update the task with approval status
+      // Find the selected manager's name
+      const selectedManagerData = managers.find(m => m.id === selectedManager);
+
+      // Update the task with completion and approval status
       setTasks(tasks.map(task =>
         task.id === selectedTodoTask.id
-          ? { ...task, approvalStatus: 'pending' as const }
+          ? {
+              ...task,
+              status: 'completed',
+              approvalStatus: 'pending' as const,
+              submittedTo: selectedManagerData?.name || 'Unknown Manager'
+            }
           : task
       ));
 
       // In a real app, this would send the task to the selected manager for approval
-      console.log(`Task "${selectedTodoTask.title}" submitted to ${selectedManager} for approval`);
+      console.log(`Task "${selectedTodoTask.title}" completed and submitted to ${selectedManagerData?.name} for approval`);
       setIsTodoApprovalModalOpen(false);
       setSelectedTodoTask(null);
       setSelectedManager('');
@@ -314,6 +333,21 @@ export default function EmployeeTasks() {
       setEditingAssignedTask(null);
       setEditTask({ title: '', description: '', priority: 'medium', dueDate: '' });
     }
+  };
+
+  const handleRevertTask = (taskId: string) => {
+    setTasks(tasks.map(task =>
+      task.id === taskId
+        ? {
+            ...task,
+            status: 'pending',
+            approvalStatus: undefined,
+            approvedBy: undefined,
+            approvedDate: undefined,
+            submittedTo: undefined
+          }
+        : task
+    ));
   };
 
   // Filter tasks by type and status
@@ -497,15 +531,6 @@ export default function EmployeeTasks() {
                                   </svg>
                                   Edit
                                 </Button>
-                                {task.status === 'completed' && !task.approvalStatus && (
-                                  <Button
-                                    size="sm"
-                                    onClick={() => handleRequestTodoApproval(task)}
-                                    className="bg-green-600 hover:bg-green-700"
-                                  >
-                                    Request Approval
-                                  </Button>
-                                )}
                               </div>
                             </div>
                           </div>
@@ -549,6 +574,19 @@ export default function EmployeeTasks() {
                                 {task.description && (
                                   <p className="text-sm text-gray-600 mb-2">{task.description}</p>
                                 )}
+                                {task.submittedTo && (
+                                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">
+                                    <div className="flex items-start space-x-2">
+                                      <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                      </svg>
+                                      <div className="flex-1">
+                                        <p className="text-xs font-medium text-blue-800 mb-1">Submitted for approval to:</p>
+                                        <p className="text-xs text-blue-700 font-semibold">{task.submittedTo}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
                                 <div className="flex items-center space-x-4 text-xs text-gray-500">
                                   <span>Created: {new Date(task.createdDate).toLocaleDateString()}</span>
                                   {task.dueDate && (
@@ -557,15 +595,14 @@ export default function EmployeeTasks() {
                                 </div>
                               </div>
                               <div className="flex items-center space-x-2">
-                                {!task.approvalStatus && (
-                                  <Button
-                                    size="sm"
-                                    onClick={() => handleRequestTodoApproval(task)}
-                                    className="bg-green-600 hover:bg-green-700"
-                                  >
-                                    Request Approval
-                                  </Button>
-                                )}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleRevertTask(task.id)}
+                                  className="text-orange-600 border-orange-600 hover:bg-orange-50"
+                                >
+                                  Revert Task
+                                </Button>
                                 <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
@@ -778,17 +815,6 @@ export default function EmployeeTasks() {
                                 >
                                   {task.status === 'completed' ? 'Mark Pending' : 'Mark Complete'}
                                 </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleEditAssignedTask(task)}
-                                  className="text-blue-600 border-blue-600 hover:bg-blue-50"
-                                >
-                                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                  </svg>
-                                  Edit
-                                </Button>
                               </div>
                             </div>
                           </div>
@@ -840,7 +866,15 @@ export default function EmployeeTasks() {
                                   )}
                                 </div>
                               </div>
-                              <div className="flex items-center">
+                              <div className="flex items-center space-x-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleRevertTask(task.id)}
+                                  className="text-orange-600 border-orange-600 hover:bg-orange-50"
+                                >
+                                  Revert Task
+                                </Button>
                                 <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
@@ -1085,17 +1119,17 @@ export default function EmployeeTasks() {
             </div>
           </Modal>
 
-          {/* Todo Approval Request Modal */}
+          {/* Todo Completion & Approval Request Modal */}
           <Modal
             isOpen={isTodoApprovalModalOpen}
             onClose={() => setIsTodoApprovalModalOpen(false)}
-            title="Request Todo Task Approval"
+            title="Complete Task & Request Approval"
             size="md"
           >
             <div className="space-y-4">
               <div>
                 <p className="text-sm text-gray-600 mb-4">
-                  Request approval for the completed task: <strong>{selectedTodoTask?.title}</strong>
+                  Complete and submit task for approval: <strong>{selectedTodoTask?.title}</strong>
                 </p>
 
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1121,7 +1155,7 @@ export default function EmployeeTasks() {
                   className="flex-1 bg-green-600 hover:bg-green-700"
                   disabled={!selectedManager}
                 >
-                  Submit for Approval
+                  Complete & Submit for Approval
                 </Button>
                 <Button
                   variant="outline"
