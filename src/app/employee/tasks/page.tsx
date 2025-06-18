@@ -27,8 +27,10 @@ export default function EmployeeTasks() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'todo' | 'assigned'>('todo');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   const [tasks, setTasks] = useState<Task[]>([
     {
@@ -140,6 +142,13 @@ export default function EmployeeTasks() {
     dueDate: ''
   });
 
+  const [editTask, setEditTask] = useState({
+    title: '',
+    description: '',
+    priority: 'medium' as 'low' | 'medium' | 'high',
+    dueDate: ''
+  });
+
   const [managers] = useState([
     { id: '1', name: 'Sarah Johnson', email: 'sarah.johnson@updesco.com' },
     { id: '2', name: 'Mike Wilson', email: 'mike.wilson@updesco.com' },
@@ -224,6 +233,36 @@ export default function EmployeeTasks() {
       setIsApprovalModalOpen(false);
       setSelectedTask(null);
       setSelectedManager('');
+    }
+  };
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setEditTask({
+      title: task.title,
+      description: task.description || '',
+      priority: task.priority,
+      dueDate: task.dueDate || ''
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateTask = () => {
+    if (editingTask && editTask.title.trim()) {
+      setTasks(tasks.map(task =>
+        task.id === editingTask.id
+          ? {
+              ...task,
+              title: editTask.title,
+              description: editTask.description,
+              priority: editTask.priority,
+              dueDate: editTask.dueDate
+            }
+          : task
+      ));
+      setIsEditModalOpen(false);
+      setEditingTask(null);
+      setEditTask({ title: '', description: '', priority: 'medium', dueDate: '' });
     }
   };
 
@@ -380,6 +419,17 @@ export default function EmployeeTasks() {
                                   onClick={() => handleToggleStatus(task.id)}
                                 >
                                   {task.status === 'completed' ? 'Mark Pending' : 'Mark Complete'}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleEditTask(task)}
+                                  className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                                >
+                                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                  Edit
                                 </Button>
                                 {task.status === 'completed' && !task.approvalStatus && (
                                   <Button
@@ -905,6 +955,92 @@ export default function EmployeeTasks() {
                     setIsApprovalModalOpen(false);
                     setSelectedTask(null);
                     setSelectedManager('');
+                  }}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </Modal>
+
+          {/* Edit Task Modal */}
+          <Modal
+            isOpen={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
+            title="Edit Task"
+            size="md"
+          >
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Title *
+                </label>
+                <input
+                  type="text"
+                  value={editTask.title}
+                  onChange={(e) => setEditTask({ ...editTask, title: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter task title..."
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Description
+                </label>
+                <textarea
+                  value={editTask.description}
+                  onChange={(e) => setEditTask({ ...editTask, description: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter description (optional)..."
+                  rows={3}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Priority
+                  </label>
+                  <select
+                    value={editTask.priority}
+                    onChange={(e) => setEditTask({ ...editTask, priority: e.target.value as any })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="low">🟢 Low Priority</option>
+                    <option value="medium">🔵 Medium Priority</option>
+                    <option value="high">🔴 High Priority</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Due Date
+                  </label>
+                  <input
+                    type="date"
+                    value={editTask.dueDate}
+                    onChange={(e) => setEditTask({ ...editTask, dueDate: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex space-x-3 pt-4">
+                <Button
+                  onClick={handleUpdateTask}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  disabled={!editTask.title.trim()}
+                >
+                  Update Task
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setEditingTask(null);
+                    setEditTask({ title: '', description: '', priority: 'medium', dueDate: '' });
                   }}
                   className="flex-1"
                 >

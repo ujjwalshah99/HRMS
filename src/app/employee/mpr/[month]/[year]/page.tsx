@@ -302,18 +302,23 @@ export default function MPRDetails() {
                             {task.status.charAt(0).toUpperCase() + task.status.slice(1).replace('-', ' ')}
                           </span>
                         </div>
+                        {/* Highlighted Date Range */}
+                        <div className="mb-3">
+                          <p className="text-sm font-bold text-gray-900">
+                            {formatDate(task.startDate)}
+                            {task.completedDate && (
+                              <span> - {formatDate(task.completedDate)}</span>
+                            )}
+                          </p>
+                        </div>
                         <p className="text-gray-600 mb-4">{task.description}</p>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <h4 className="text-sm font-medium text-gray-700 mb-2">Timeline</h4>
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">Task Details</h4>
                         <div className="space-y-1 text-sm">
-                          <p><span className="text-gray-500">Started:</span> {formatDate(task.startDate)}</p>
-                          {task.completedDate && (
-                            <p><span className="text-gray-500">Completed:</span> {formatDate(task.completedDate)}</p>
-                          )}
                           <p><span className="text-gray-500">Category:</span> {task.category}</p>
                           {task.assignedBy && (
                             <p><span className="text-gray-500">Assigned by:</span> {task.assignedBy}</p>
