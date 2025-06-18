@@ -24,7 +24,7 @@ interface Employee {
 export default function ManagerEmployees() {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDepartment, setSelectedDepartment] = useState('all');
+
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
 
@@ -91,7 +91,7 @@ export default function ManagerEmployees() {
     }
   ]);
 
-  const departments = ['all', 'Engineering', 'Marketing', 'HR', 'Finance'];
+
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -118,8 +118,7 @@ export default function ManagerEmployees() {
     const matchesSearch = emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          emp.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          emp.position.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDepartment = selectedDepartment === 'all' || emp.department === selectedDepartment;
-    return matchesSearch && matchesDepartment;
+    return matchesSearch;
   });
 
   const handleViewProfile = (employee: Employee) => {
@@ -153,17 +152,9 @@ export default function ManagerEmployees() {
       >
         <div className="space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Employee Management</h1>
-              <p className="text-gray-600">Manage team members and their information</p>
-            </div>
-            <Button className="bg-blue-600 hover:bg-blue-700">
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Add Employee
-            </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Employee Management</h1>
+            <p className="text-gray-600">Manage team members and their information</p>
           </div>
 
           {/* Employee Statistics */}
@@ -224,14 +215,14 @@ export default function ManagerEmployees() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-orange-600">Departments</p>
+                    <p className="text-sm font-medium text-orange-600">Task Completion</p>
                     <p className="text-3xl font-bold text-orange-900">
-                      {departments.filter(d => d !== 'all').length}
+                      {Math.round(employees.reduce((acc, e) => acc + getCompletionRate(e.tasksCompleted, e.totalTasks), 0) / employees.length)}%
                     </p>
                   </div>
                   <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
                     <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                     </svg>
                   </div>
                 </div>
@@ -242,38 +233,20 @@ export default function ManagerEmployees() {
           {/* Search and Filters */}
           <Card>
             <CardHeader>
-              <CardTitle>Search & Filter</CardTitle>
+              <CardTitle>Search Employees</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Search Employees
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Search by name, email, or position..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Department
-                  </label>
-                  <select
-                    value={selectedDepartment}
-                    onChange={(e) => setSelectedDepartment(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    {departments.map(dept => (
-                      <option key={dept} value={dept}>
-                        {dept === 'all' ? 'All Departments' : dept}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Search Employees
+                </label>
+                <input
+                  type="text"
+                  placeholder="Search by name, email, or position..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
               </div>
             </CardContent>
           </Card>
@@ -333,11 +306,9 @@ export default function ManagerEmployees() {
                           variant="outline"
                           onClick={() => handleViewProfile(employee)}
                         >
-                          View Profile
+                          View
                         </Button>
-                        <Button size="sm" variant="outline">
-                          Edit
-                        </Button>
+
                       </div>
                     </div>
                   </div>
@@ -431,18 +402,7 @@ export default function ManagerEmployees() {
                   </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex space-x-3 pt-4 border-t">
-                  <Button className="flex-1 bg-blue-600 hover:bg-blue-700">
-                    Edit Profile
-                  </Button>
-                  <Button variant="outline" className="flex-1">
-                    View Attendance
-                  </Button>
-                  <Button variant="outline" className="flex-1">
-                    Assign Task
-                  </Button>
-                </div>
+
               </div>
             )}
           </Modal>

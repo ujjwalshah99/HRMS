@@ -5,68 +5,97 @@ import { ManagerLayout } from '@/components/layout/ManagerLayout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function ManagerAttendance() {
   const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedDepartment, setSelectedDepartment] = useState('all');
+  const [selectedEmployee, setSelectedEmployee] = useState('all');
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<any>(null);
 
-  // Mock attendance data
-  const attendanceData = [
-    {
-      id: '1',
-      name: 'John Doe',
-      email: 'john.doe@updesco.com',
-      department: 'Engineering',
-      checkIn: '09:00 AM',
-      checkOut: '05:30 PM',
-      status: 'On Time',
-      workingHours: '8h 30m'
-    },
-    {
-      id: '2',
-      name: 'Jane Smith',
-      email: 'jane.smith@updesco.com',
-      department: 'Engineering',
-      checkIn: '09:15 AM',
-      checkOut: '05:45 PM',
-      status: 'Late',
-      workingHours: '8h 30m'
-    },
-    {
-      id: '3',
-      name: 'Mike Johnson',
-      email: 'mike.johnson@updesco.com',
-      department: 'Marketing',
-      checkIn: '--',
-      checkOut: '--',
-      status: 'Absent',
-      workingHours: '--'
-    },
-    {
-      id: '4',
-      name: 'Sarah Wilson',
-      email: 'sarah.wilson@updesco.com',
-      department: 'Engineering',
-      checkIn: '08:45 AM',
-      checkOut: '04:30 PM',
-      status: 'Early Leave',
-      workingHours: '7h 45m'
-    },
-    {
-      id: '5',
-      name: 'David Brown',
-      email: 'david.brown@updesco.com',
-      department: 'HR',
-      checkIn: '09:05 AM',
-      checkOut: '05:35 PM',
-      status: 'On Time',
-      workingHours: '8h 30m'
+  // Initialize attendance data from localStorage or use default data
+  const getInitialAttendanceData = () => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('attendanceData');
+      if (saved) {
+        return JSON.parse(saved);
+      }
     }
-  ];
+    return [
+      {
+        id: '1',
+        name: 'John Doe',
+        email: 'john.doe@updesco.com',
+        employeeId: 'EMP001',
+        department: 'Engineering',
+        checkIn: '09:00 AM',
+        checkOut: '05:30 PM',
+        status: 'On Time',
+        workingHours: '8h 30m'
+      },
+      {
+        id: '2',
+        name: 'Jane Smith',
+        email: 'jane.smith@updesco.com',
+        employeeId: 'EMP002',
+        department: 'Engineering',
+        checkIn: '09:15 AM',
+        checkOut: '05:45 PM',
+        status: 'Late',
+        workingHours: '8h 30m'
+      },
+      {
+        id: '3',
+        name: 'Mike Johnson',
+        email: 'mike.johnson@updesco.com',
+        employeeId: 'EMP003',
+        department: 'Marketing',
+        checkIn: '--',
+        checkOut: '--',
+        status: 'Absent',
+        workingHours: '--'
+      },
+      {
+        id: '4',
+        name: 'Sarah Wilson',
+        email: 'sarah.wilson@updesco.com',
+        employeeId: 'EMP004',
+        department: 'Engineering',
+        checkIn: '08:45 AM',
+        checkOut: '04:30 PM',
+        status: 'Early Leave',
+        workingHours: '7h 45m'
+      },
+      {
+        id: '5',
+        name: 'David Brown',
+        email: 'david.brown@updesco.com',
+        employeeId: 'EMP005',
+        department: 'HR',
+        checkIn: '09:05 AM',
+        checkOut: '05:35 PM',
+        status: 'On Time',
+        workingHours: '8h 30m'
+      }
+    ];
+  };
 
-  const departments = ['all', 'Engineering', 'Marketing', 'HR', 'Finance'];
+  const [attendanceData, setAttendanceData] = useState(getInitialAttendanceData);
+
+  // Mock data
+  const employees = [
+    { id: 'all', name: 'All Employees', employeeId: '' },
+    { id: '1', name: 'John Doe', employeeId: 'EMP001' },
+    { id: '2', name: 'Jane Smith', employeeId: 'EMP002' },
+    { id: '3', name: 'Mike Johnson', employeeId: 'EMP003' },
+    { id: '4', name: 'Sarah Wilson', employeeId: 'EMP004' },
+    { id: '5', name: 'David Brown', employeeId: 'EMP005' },
+    { id: '6', name: 'Emily Davis', employeeId: 'EMP006' },
+    { id: '7', name: 'Robert Miller', employeeId: 'EMP007' }
+  ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -83,9 +112,148 @@ export default function ManagerAttendance() {
     }
   };
 
-  const filteredData = attendanceData.filter(emp => 
-    selectedDepartment === 'all' || emp.department === selectedDepartment
+  const filteredData = attendanceData.filter(emp =>
+    selectedEmployee === 'all' || emp.id === selectedEmployee
   );
+
+  const handleDownloadMonthlyReport = () => {
+    const selectedEmp = employees.find(emp => emp.id === selectedEmployee);
+    const empName = selectedEmp ? selectedEmp.name : 'All Employees';
+    const monthName = new Date(selectedMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+    // Generate CSV data based on selected employee and month
+    let csvData = [['Employee', 'Employee ID', 'Date', 'Check-In', 'Check-Out', 'Working Hours', 'Status']];
+
+    if (selectedEmployee === 'all') {
+      // Generate data for all employees
+      attendanceData.forEach(emp => {
+        csvData.push([
+          emp.name,
+          emp.employeeId,
+          selectedMonth + '-15', // Mock date for the month
+          emp.checkIn,
+          emp.checkOut,
+          emp.workingHours,
+          emp.status
+        ]);
+      });
+    } else {
+      // Generate data for selected employee
+      const empData = attendanceData.find(emp => emp.id === selectedEmployee);
+      if (empData) {
+        // Generate multiple entries for the month
+        for (let day = 1; day <= 30; day++) {
+          const date = `${selectedMonth}-${day.toString().padStart(2, '0')}`;
+          csvData.push([
+            empData.name,
+            empData.employeeId,
+            date,
+            empData.checkIn,
+            empData.checkOut,
+            empData.workingHours,
+            empData.status
+          ]);
+        }
+      }
+    }
+
+    const csvContent = csvData.map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${empName}_${monthName}_Attendance_Report.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleEditRecord = (record: any) => {
+    // Convert time format for input fields
+    const convertTimeToInput = (timeStr: string) => {
+      if (!timeStr || timeStr === '--') return '';
+      // Convert "09:00 AM" to "09:00"
+      const time = timeStr.replace(/\s*(AM|PM)/i, '');
+      const [hours, minutes] = time.split(':');
+      let hour24 = parseInt(hours);
+
+      if (timeStr.toLowerCase().includes('pm') && hour24 !== 12) {
+        hour24 += 12;
+      } else if (timeStr.toLowerCase().includes('am') && hour24 === 12) {
+        hour24 = 0;
+      }
+
+      return `${hour24.toString().padStart(2, '0')}:${minutes}`;
+    };
+
+    setEditingRecord({
+      ...record,
+      checkInTime: convertTimeToInput(record.checkIn),
+      checkOutTime: convertTimeToInput(record.checkOut)
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const calculateWorkingHours = (checkIn: string, checkOut: string) => {
+    if (!checkIn || !checkOut) return '--';
+
+    const [inHours, inMinutes] = checkIn.split(':').map(Number);
+    const [outHours, outMinutes] = checkOut.split(':').map(Number);
+
+    const inTotalMinutes = inHours * 60 + inMinutes;
+    const outTotalMinutes = outHours * 60 + outMinutes;
+
+    let diffMinutes = outTotalMinutes - inTotalMinutes;
+    if (diffMinutes < 0) diffMinutes += 24 * 60; // Handle next day
+
+    const hours = Math.floor(diffMinutes / 60);
+    const minutes = diffMinutes % 60;
+
+    return `${hours}h ${minutes}m`;
+  };
+
+  const convertTimeToDisplay = (timeStr: string) => {
+    if (!timeStr) return '--';
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours;
+    return `${displayHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${period}`;
+  };
+
+  const handleTimeChange = (field: 'checkInTime' | 'checkOutTime', value: string) => {
+    const updatedRecord = { ...editingRecord, [field]: value };
+
+    // Update display times
+    if (field === 'checkInTime') {
+      updatedRecord.checkIn = convertTimeToDisplay(value);
+    } else {
+      updatedRecord.checkOut = convertTimeToDisplay(value);
+    }
+
+    // Auto-calculate working hours if both times are present
+    if (updatedRecord.checkInTime && updatedRecord.checkOutTime) {
+      updatedRecord.workingHours = calculateWorkingHours(updatedRecord.checkInTime, updatedRecord.checkOutTime);
+    }
+
+    setEditingRecord(updatedRecord);
+  };
+
+  const handleSaveEdit = () => {
+    if (editingRecord) {
+      // Update the attendance data state with the edited record
+      setAttendanceData(prevData => {
+        const updatedData = prevData.map(record =>
+          record.id === editingRecord.id ? { ...editingRecord } : record
+        );
+        // Persist to localStorage
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('attendanceData', JSON.stringify(updatedData));
+        }
+        return updatedData;
+      });
+      setIsEditModalOpen(false);
+      setEditingRecord(null);
+    }
+  };
 
   return (
     <ProtectedRoute allowedRoles={['manager']}>
@@ -107,7 +275,7 @@ export default function ManagerAttendance() {
               <CardTitle>Filters</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Date
@@ -121,22 +289,36 @@ export default function ManagerAttendance() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Department
+                    Employee
                   </label>
                   <select
-                    value={selectedDepartment}
-                    onChange={(e) => setSelectedDepartment(e.target.value)}
+                    value={selectedEmployee}
+                    onChange={(e) => setSelectedEmployee(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
-                    {departments.map(dept => (
-                      <option key={dept} value={dept}>
-                        {dept === 'all' ? 'All Departments' : dept}
+                    {employees.map(emp => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.id === 'all' ? emp.name : `${emp.name} (${emp.employeeId})`}
                       </option>
                     ))}
                   </select>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Month
+                  </label>
+                  <input
+                    type="month"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
                 <div className="flex items-end">
-                  <Button className="w-full">
+                  <Button
+                    onClick={handleDownloadMonthlyReport}
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                  >
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
@@ -203,11 +385,12 @@ export default function ManagerAttendance() {
                         </td>
                         <td className="py-3 px-2">
                           <div className="flex space-x-2">
-                            <Button size="sm" variant="outline">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEditRecord(employee)}
+                            >
                               Edit
-                            </Button>
-                            <Button size="sm" variant="outline">
-                              View
                             </Button>
                           </div>
                         </td>
@@ -227,6 +410,104 @@ export default function ManagerAttendance() {
               )}
             </CardContent>
           </Card>
+
+          {/* Edit Attendance Modal */}
+          <Modal
+            isOpen={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
+            title="Edit Attendance Record"
+            size="md"
+          >
+            {editingRecord && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Employee Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editingRecord.name}
+                    onChange={(e) => setEditingRecord({ ...editingRecord, name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    disabled
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Check-In Time
+                    </label>
+                    <input
+                      type="time"
+                      value={editingRecord.checkInTime || ''}
+                      onChange={(e) => handleTimeChange('checkInTime', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Display: {editingRecord.checkIn || '--'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Check-Out Time
+                    </label>
+                    <input
+                      type="time"
+                      value={editingRecord.checkOutTime || ''}
+                      onChange={(e) => handleTimeChange('checkOutTime', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Display: {editingRecord.checkOut || '--'}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Status
+                  </label>
+                  <select
+                    value={editingRecord.status}
+                    onChange={(e) => setEditingRecord({ ...editingRecord, status: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="On Time">On Time</option>
+                    <option value="Late">Late</option>
+                    <option value="Early Leave">Early Leave</option>
+                    <option value="Absent">Absent</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Working Hours (Auto-calculated)
+                  </label>
+                  <input
+                    type="text"
+                    value={editingRecord.workingHours || '--'}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600"
+                    placeholder="Auto-calculated based on check-in/out times"
+                    readOnly
+                  />
+                  <p className="text-xs text-gray-500 mt-1">This field is automatically calculated when you set check-in and check-out times</p>
+                </div>
+
+                <div className="flex space-x-3 pt-4">
+                  <Button
+                    onClick={handleSaveEdit}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  >
+                    Save Changes
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsEditModalOpen(false)}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+          </Modal>
         </div>
       </ManagerLayout>
     </ProtectedRoute>

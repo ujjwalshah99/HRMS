@@ -13,7 +13,7 @@ interface Task {
   title: string;
   description?: string;
   priority: 'low' | 'medium' | 'high';
-  status: 'pending' | 'in-progress' | 'completed' | 'overdue';
+  status: 'pending' | 'in-progress' | 'completed' | 'overdue' | 'rejected';
   assignedTo: string;
   assignedBy: string;
   dueDate?: string;
@@ -25,7 +25,9 @@ export default function ManagerTasks() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'assigned' | 'approval'>('assigned');
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState<'all' | 'pending' | 'completed' | 'overdue'>('all');
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<'all' | 'in-progress' | 'completed' | 'overdue' | 'rejected'>('all');
 
   const [tasks, setTasks] = useState<Task[]>([
     {
@@ -57,7 +59,7 @@ export default function ManagerTasks() {
       title: 'Code review for payment module',
       description: 'Review and approve payment integration code',
       priority: 'high',
-      status: 'pending',
+      status: 'in-progress',
       assignedTo: 'Mike Johnson',
       assignedBy: 'Sarah Johnson',
       dueDate: '2024-01-18',
@@ -117,6 +119,8 @@ export default function ManagerTasks() {
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'overdue':
         return 'bg-red-100 text-red-800 border-red-200';
+      case 'rejected':
+        return 'bg-red-100 text-red-800 border-red-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
@@ -129,7 +133,7 @@ export default function ManagerTasks() {
         title: newTask.title,
         description: newTask.description,
         priority: newTask.priority,
-        status: 'pending',
+        status: 'in-progress',
         assignedTo: newTask.assignedTo,
         assignedBy: user?.name || 'Manager',
         dueDate: newTask.dueDate,
@@ -153,9 +157,28 @@ export default function ManagerTasks() {
   const handleRejectTask = (taskId: string) => {
     setTasks(tasks.map(task =>
       task.id === taskId
-        ? { ...task, status: 'pending' as const }
+        ? { ...task, status: 'rejected' as const }
         : task
     ));
+  };
+
+  const handleDeleteTask = (taskId: string) => {
+    setTasks(tasks.filter(task => task.id !== taskId));
+  };
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask({ ...task });
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (editingTask) {
+      setTasks(tasks.map(task =>
+        task.id === editingTask.id ? { ...editingTask } : task
+      ));
+      setIsEditModalOpen(false);
+      setEditingTask(null);
+    }
   };
 
   const assignedTasks = tasks.filter(task => task.type === 'assigned');
@@ -168,7 +191,7 @@ export default function ManagerTasks() {
 
   const taskStats = {
     total: assignedTasks.length,
-    pending: assignedTasks.filter(t => t.status === 'pending').length,
+    inProgress: assignedTasks.filter(t => t.status === 'in-progress').length,
     completed: assignedTasks.filter(t => t.status === 'completed').length,
     overdue: assignedTasks.filter(t => t.status === 'overdue').length
   };
@@ -216,15 +239,15 @@ export default function ManagerTasks() {
               </CardContent>
             </Card>
 
-            <Card className="bg-yellow-50 border-yellow-200">
+            <Card className="bg-blue-50 border-blue-200">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-yellow-600">Pending</p>
-                    <p className="text-3xl font-bold text-yellow-900">{taskStats.pending}</p>
+                    <p className="text-sm font-medium text-blue-600">In Progress</p>
+                    <p className="text-3xl font-bold text-blue-900">{taskStats.inProgress}</p>
                   </div>
-                  <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                    <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
@@ -300,9 +323,19 @@ export default function ManagerTasks() {
               className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="all">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="completed">Completed</option>
-              <option value="overdue">Overdue</option>
+              {activeTab === 'assigned' ? (
+                <>
+                  <option value="in-progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                  <option value="overdue">Overdue</option>
+                </>
+              ) : (
+                <>
+                  <option value="in-progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                  <option value="rejected">Rejected</option>
+                </>
+              )}
             </select>
           </div>
 
@@ -338,10 +371,19 @@ export default function ManagerTasks() {
                             </div>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <Button size="sm" variant="outline">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEditTask(task)}
+                            >
                               Edit
                             </Button>
-                            <Button size="sm" variant="outline" className="text-red-600 border-red-600 hover:bg-red-50">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-red-600 border-red-600 hover:bg-red-50"
+                              onClick={() => handleDeleteTask(task.id)}
+                            >
                               Delete
                             </Button>
                           </div>
@@ -359,8 +401,8 @@ export default function ManagerTasks() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {approvalTasks.length > 0 ? (
-                    approvalTasks.map((task) => (
+                  {filteredTasks(approvalTasks).length > 0 ? (
+                    filteredTasks(approvalTasks).map((task) => (
                       <div key={task.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
@@ -516,6 +558,122 @@ export default function ManagerTasks() {
                 </Button>
               </div>
             </div>
+          </Modal>
+
+          {/* Edit Task Modal */}
+          <Modal
+            isOpen={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
+            title="Edit Task"
+            size="md"
+          >
+            {editingTask && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Task Title *
+                  </label>
+                  <input
+                    type="text"
+                    value={editingTask.title}
+                    onChange={(e) => setEditingTask({ ...editingTask, title: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter task title..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    value={editingTask.description || ''}
+                    onChange={(e) => setEditingTask({ ...editingTask, description: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter task description..."
+                    rows={3}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Assigned To *
+                    </label>
+                    <select
+                      value={editingTask.assignedTo}
+                      onChange={(e) => setEditingTask({ ...editingTask, assignedTo: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">Select employee...</option>
+                      {employees.map((emp) => (
+                        <option key={emp.id} value={emp.name}>
+                          {emp.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Priority
+                    </label>
+                    <select
+                      value={editingTask.priority}
+                      onChange={(e) => setEditingTask({ ...editingTask, priority: e.target.value as any })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="low">🟢 Low Priority</option>
+                      <option value="medium">🔵 Medium Priority</option>
+                      <option value="high">🔴 High Priority</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Status
+                    </label>
+                    <select
+                      value={editingTask.status}
+                      onChange={(e) => setEditingTask({ ...editingTask, status: e.target.value as any })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="in-progress">In Progress</option>
+                      <option value="completed">Completed</option>
+                      <option value="overdue">Overdue</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Due Date
+                    </label>
+                    <input
+                      type="date"
+                      value={editingTask.dueDate || ''}
+                      onChange={(e) => setEditingTask({ ...editingTask, dueDate: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex space-x-3 pt-4">
+                  <Button
+                    onClick={handleSaveEdit}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  >
+                    Save Changes
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsEditModalOpen(false)}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
           </Modal>
         </div>
       </ManagerLayout>
