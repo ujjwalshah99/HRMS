@@ -7,101 +7,21 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
-
-interface Meeting {
-  id: string;
-  title: string;
-  description?: string;
-  date: string;
-  time: string;
-  duration: number; // in minutes
-  type: 'assigned' | 'created' | 'reminder';
-  assignedBy?: string;
-  createdBy?: string;
-  location?: string;
-  meetingLink?: string;
-  attendees?: string[];
-  priority: 'low' | 'medium' | 'high';
-  status: 'upcoming' | 'completed' | 'cancelled';
-  createdDate: string;
-}
+import { useMeetings, Meeting } from '@/contexts/MeetingsContext';
 
 export default function ManagerMeetings() {
   const { user } = useAuth();
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { meetings, addMeeting, deleteMeeting } = useMeetings();
   const [isCreateMeetingModalOpen, setIsCreateMeetingModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'assigned' | 'created' | 'reminders'>('assigned');
+  const [activeTab, setActiveTab] = useState<'assigned' | 'created'>('assigned');
 
   // Filter states
   const [filters, setFilters] = useState({
-    priority: 'all' as 'all' | 'low' | 'medium' | 'high',
-    meetingMode: 'all' as 'all' | 'online' | 'in-person',
+    meetingMode: 'all' as 'all' | 'online' | 'offline',
     dateFilter: 'all' as 'all' | 'today' | 'this-week' | 'this-month'
   });
 
-  const [meetings, setMeetings] = useState<Meeting[]>([
-    {
-      id: '1',
-      title: 'Board Meeting - Q4 Review',
-      description: 'Quarterly review meeting with board members',
-      date: '2024-01-22',
-      time: '14:00',
-      duration: 120,
-      type: 'assigned',
-      assignedBy: 'Michael Director',
-      location: 'Board Room',
-      meetingLink: 'https://meet.google.com/board-q4-review',
-      attendees: ['Sarah Johnson', 'Michael Director', 'John Smith'],
-      priority: 'high',
-      status: 'upcoming',
-      createdDate: '2024-01-15'
-    },
-    {
-      id: '2',
-      title: 'Team Performance Review',
-      description: 'Monthly team performance and goal setting meeting',
-      date: '2024-01-25',
-      time: '10:00',
-      duration: 90,
-      type: 'created',
-      createdBy: 'Sarah Johnson',
-      location: 'Conference Room B',
-      meetingLink: 'https://meet.google.com/team-performance',
-      attendees: ['John Doe', 'Mike Wilson', 'Jane Smith', 'Alex Brown'],
-      priority: 'high',
-      status: 'upcoming',
-      createdDate: '2024-01-18'
-    },
-    {
-      id: '3',
-      title: 'Client Presentation Prep',
-      description: 'Prepare for upcoming client presentation',
-      date: '2024-01-24',
-      time: '15:30',
-      duration: 60,
-      type: 'reminder',
-      location: 'Meeting Room A',
-      priority: 'medium',
-      status: 'upcoming',
-      createdDate: '2024-01-20'
-    },
-    {
-      id: '4',
-      title: 'Weekly Department Sync',
-      description: 'Weekly sync with all department heads',
-      date: '2024-01-26',
-      time: '09:00',
-      duration: 45,
-      type: 'created',
-      createdBy: 'Sarah Johnson',
-      location: 'Main Conference Room',
-      meetingLink: 'https://meet.google.com/dept-sync',
-      attendees: ['HR Head', 'Finance Head', 'IT Head', 'Operations Head'],
-      priority: 'medium',
-      status: 'upcoming',
-      createdDate: '2024-01-19'
-    }
-  ]);
+
 
   const [newMeeting, setNewMeeting] = useState({
     title: '',
@@ -112,7 +32,7 @@ export default function ManagerMeetings() {
     location: '',
     attendees: [] as string[],
     duration: 60,
-    priority: 'medium' as 'low' | 'medium' | 'high'
+    mode: 'offline' as 'online' | 'offline'
   });
 
   // Mock employee data for attendees dropdown
@@ -129,27 +49,14 @@ export default function ManagerMeetings() {
     { id: 'md', name: 'Michael Director', email: 'md@updesco.com', employeeId: 'MD001', role: 'managing-director' }
   ];
 
-  const [newReminder, setNewReminder] = useState({
-    title: '',
-    description: '',
-    date: '',
-    time: '',
-    meetingLink: ''
-  });
+
 
   // Filter function
   const applyFilters = (meetingList: Meeting[]) => {
     return meetingList.filter(meeting => {
-      // Priority filter
-      if (filters.priority !== 'all' && meeting.priority !== filters.priority) {
-        return false;
-      }
-
       // Meeting mode filter
       if (filters.meetingMode !== 'all') {
-        const isOnline = !!meeting.meetingLink;
-        if (filters.meetingMode === 'online' && !isOnline) return false;
-        if (filters.meetingMode === 'in-person' && isOnline) return false;
+        if (meeting.mode !== filters.meetingMode) return false;
       }
 
       // Date filter
@@ -183,7 +90,6 @@ export default function ManagerMeetings() {
   // Filter meetings by type and apply filters
   const assignedMeetings = applyFilters(meetings.filter(meeting => meeting.type === 'assigned'));
   const createdMeetings = applyFilters(meetings.filter(meeting => meeting.type === 'created'));
-  const reminderMeetings = applyFilters(meetings.filter(meeting => meeting.type === 'reminder'));
 
   // Get today's meetings
   const today = new Date().toISOString().split('T')[0];
@@ -200,6 +106,16 @@ export default function ManagerMeetings() {
 
   const handleCreateMeeting = () => {
     if (newMeeting.title.trim() && newMeeting.date && newMeeting.time && newMeeting.attendees.length > 0) {
+      // Validate mode-specific requirements
+      if (newMeeting.mode === 'online' && !newMeeting.meetingLink.trim()) {
+        alert('Meeting link is required for online meetings');
+        return;
+      }
+      if (newMeeting.mode === 'offline' && !newMeeting.location.trim()) {
+        alert('Location is required for offline meetings');
+        return;
+      }
+
       const meeting: Meeting = {
         id: Date.now().toString(),
         title: newMeeting.title,
@@ -212,11 +128,11 @@ export default function ManagerMeetings() {
         location: newMeeting.location,
         meetingLink: newMeeting.meetingLink,
         attendees: newMeeting.attendees,
-        priority: newMeeting.priority,
+        mode: newMeeting.mode,
         status: 'upcoming',
         createdDate: new Date().toISOString().split('T')[0]
       };
-      setMeetings([meeting, ...meetings]);
+      addMeeting(meeting);
       setNewMeeting({
         title: '',
         description: '',
@@ -226,7 +142,7 @@ export default function ManagerMeetings() {
         location: '',
         attendees: [],
         duration: 60,
-        priority: 'medium'
+        mode: 'offline'
       });
       setIsCreateMeetingModalOpen(false);
     }
@@ -251,49 +167,30 @@ export default function ManagerMeetings() {
     }
   };
 
-  const handleAddReminder = () => {
-    if (newReminder.title.trim() && newReminder.date && newReminder.time) {
-      const meeting: Meeting = {
-        id: Date.now().toString(),
-        title: newReminder.title,
-        description: newReminder.description,
-        date: newReminder.date,
-        time: newReminder.time,
-        duration: 60,
-        type: 'reminder',
-        meetingLink: newReminder.meetingLink,
-        priority: 'medium',
-        status: 'upcoming',
-        createdDate: new Date().toISOString().split('T')[0]
-      };
-      setMeetings([meeting, ...meetings]);
-      setNewReminder({
-        title: '',
-        description: '',
-        date: '',
-        time: '',
-        meetingLink: ''
-      });
-      setIsModalOpen(false);
-    }
+  const handleSelectAllAttendees = () => {
+    const allAttendeeNames = availableAttendees.map(attendee =>
+      `${attendee.name} (${attendee.employeeId})`
+    );
+    setNewMeeting({
+      ...newMeeting,
+      attendees: allAttendeeNames
+    });
   };
+
+  const handleDeselectAllAttendees = () => {
+    setNewMeeting({
+      ...newMeeting,
+      attendees: []
+    });
+  };
+
+
 
   const getMeetingMode = (meeting: Meeting) => {
-    return meeting.meetingLink ? 'Online' : 'In-Person';
+    return meeting.mode === 'online' ? 'Online' : 'Offline';
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return 'bg-red-100 text-red-800 border-red-200';
-      case 'medium':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'low':
-        return 'bg-green-100 text-green-800 border-green-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
+
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -330,26 +227,15 @@ export default function ManagerMeetings() {
               <h1 className="text-2xl font-bold text-gray-900">Meetings</h1>
               <p className="text-gray-600">Manage your meetings and appointments</p>
             </div>
-            <div className="flex space-x-3">
-              <Button
-                onClick={() => setIsCreateMeetingModalOpen(true)}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                Create Meeting
-              </Button>
-              <Button
-                onClick={() => setIsModalOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                Add Reminder
-              </Button>
-            </div>
+            <Button
+              onClick={() => setIsCreateMeetingModalOpen(true)}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              Create Meeting
+            </Button>
           </div>
 
           {/* Stats Cards */}
@@ -418,7 +304,6 @@ export default function ManagerMeetings() {
                   variant="outline"
                   size="sm"
                   onClick={() => setFilters({
-                    priority: 'all',
                     meetingMode: 'all',
                     dateFilter: 'all'
                   })}
@@ -428,23 +313,7 @@ export default function ManagerMeetings() {
                 </Button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Priority
-                  </label>
-                  <select
-                    value={filters.priority}
-                    onChange={(e) => setFilters({ ...filters, priority: e.target.value as any })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="all">All Priorities</option>
-                    <option value="high">High Priority</option>
-                    <option value="medium">Medium Priority</option>
-                    <option value="low">Low Priority</option>
-                  </select>
-                </div>
-
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Meeting Mode
@@ -456,7 +325,7 @@ export default function ManagerMeetings() {
                   >
                     <option value="all">All Modes</option>
                     <option value="online">Online Meetings</option>
-                    <option value="in-person">In-Person Meetings</option>
+                    <option value="offline">Offline Meetings</option>
                   </select>
                 </div>
 
@@ -478,24 +347,13 @@ export default function ManagerMeetings() {
               </div>
 
               {/* Active filters display */}
-              {(filters.priority !== 'all' || filters.meetingMode !== 'all' || filters.dateFilter !== 'all') && (
+              {(filters.meetingMode !== 'all' || filters.dateFilter !== 'all') && (
                 <div className="mt-4 pt-4 border-t border-gray-200">
                   <p className="text-sm text-gray-600 mb-2">Active filters:</p>
                   <div className="flex flex-wrap gap-2">
-                    {filters.priority !== 'all' && (
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        Priority: {filters.priority.charAt(0).toUpperCase() + filters.priority.slice(1)}
-                        <button
-                          onClick={() => setFilters({ ...filters, priority: 'all' })}
-                          className="ml-2 text-blue-600 hover:text-blue-800"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    )}
                     {filters.meetingMode !== 'all' && (
                       <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        Mode: {filters.meetingMode === 'online' ? 'Online' : 'In-Person'}
+                        Mode: {filters.meetingMode === 'online' ? 'Online' : 'Offline'}
                         <button
                           onClick={() => setFilters({ ...filters, meetingMode: 'all' })}
                           className="ml-2 text-green-600 hover:text-green-800"
@@ -544,16 +402,6 @@ export default function ManagerMeetings() {
               >
                 Created Meetings ({createdMeetings.length})
               </button>
-              <button
-                onClick={() => setActiveTab('reminders')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'reminders'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Meeting Reminders ({reminderMeetings.length})
-              </button>
             </nav>
           </div>
 
@@ -582,9 +430,7 @@ export default function ManagerMeetings() {
                                 }`}>
                                   {getMeetingMode(meeting)}
                                 </span>
-                                <span className={`px-3 py-1 text-xs font-medium rounded-full border ${getPriorityColor(meeting.priority)}`}>
-                                  {meeting.priority.charAt(0).toUpperCase() + meeting.priority.slice(1)} Priority
-                                </span>
+
                               </div>
                               {meeting.description && (
                                 <p className="text-gray-600 text-sm mb-3">{meeting.description}</p>
@@ -684,9 +530,7 @@ export default function ManagerMeetings() {
                                 }`}>
                                   {getMeetingMode(meeting)}
                                 </span>
-                                <span className={`px-3 py-1 text-xs font-medium rounded-full border ${getPriorityColor(meeting.priority)}`}>
-                                  {meeting.priority.charAt(0).toUpperCase() + meeting.priority.slice(1)} Priority
-                                </span>
+
                               </div>
                               {meeting.description && (
                                 <p className="text-gray-600 text-sm mb-3">{meeting.description}</p>
@@ -742,7 +586,7 @@ export default function ManagerMeetings() {
                                 size="sm"
                                 className="text-red-600 hover:text-red-700"
                                 onClick={() => {
-                                  setMeetings(meetings.filter(m => m.id !== meeting.id));
+                                  deleteMeeting(meeting.id);
                                 }}
                               >
                                 Cancel
@@ -773,105 +617,7 @@ export default function ManagerMeetings() {
               </Card>
             )}
 
-            {activeTab === 'reminders' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold text-gray-900">
-                    Meeting Reminders ({reminderMeetings.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <div className="space-y-4">
-                    {reminderMeetings.length > 0 ? (
-                      reminderMeetings.map((meeting) => (
-                        <div key={meeting.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-3 mb-2">
-                                <h3 className="font-semibold text-gray-900">{meeting.title}</h3>
-                                <span className={`px-3 py-1 text-xs font-medium rounded-full border ${
-                                  getMeetingMode(meeting) === 'Online'
-                                    ? 'bg-green-100 text-green-800 border-green-200'
-                                    : 'bg-blue-100 text-blue-800 border-blue-200'
-                                }`}>
-                                  {getMeetingMode(meeting)}
-                                </span>
-                                <span className={`px-3 py-1 text-xs font-medium rounded-full border ${getPriorityColor(meeting.priority)}`}>
-                                  {meeting.priority.charAt(0).toUpperCase() + meeting.priority.slice(1)} Priority
-                                </span>
-                              </div>
-                              {meeting.description && (
-                                <p className="text-gray-600 text-sm mb-3">{meeting.description}</p>
-                              )}
-                              <div className="flex items-center space-x-4 text-sm text-gray-500">
-                                <div className="flex items-center">
-                                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 4v10a2 2 0 002 2h4a2 2 0 002-2V11m-6 0V9a2 2 0 012-2h4a2 2 0 012 2v2m-6 0h6" />
-                                  </svg>
-                                  {formatDate(meeting.date)}
-                                </div>
-                                <div className="flex items-center">
-                                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                  </svg>
-                                  {formatTime(meeting.time)}
-                                </div>
-                                {meeting.location && (
-                                  <div className="flex items-center">
-                                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                    {meeting.location}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex space-x-2 ml-4">
-                              {meeting.meetingLink && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => window.open(meeting.meetingLink, '_blank')}
-                                >
-                                  Join
-                                </Button>
-                              )}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-red-600 hover:text-red-700"
-                                onClick={() => {
-                                  setMeetings(meetings.filter(m => m.id !== meeting.id));
-                                }}
-                              >
-                                Remove
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-8">
-                        <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5-5-5h5v-5a7.5 7.5 0 010-15v5z" />
-                        </svg>
-                        <h3 className="mt-2 text-sm font-medium text-gray-900">No meeting reminders</h3>
-                        <p className="mt-1 text-sm text-gray-500">You haven't set any meeting reminders yet.</p>
-                        <div className="mt-6">
-                          <Button
-                            onClick={() => setIsModalOpen(true)}
-                            className="bg-blue-600 hover:bg-blue-700"
-                          >
-                            Add Your First Reminder
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+
           </div>
 
           {/* Create Meeting Modal */}
@@ -950,59 +696,107 @@ export default function ManagerMeetings() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Location
+                  Mode *
                 </label>
-                <input
-                  type="text"
-                  value={newMeeting.location}
-                  onChange={(e) => setNewMeeting({ ...newMeeting, location: e.target.value })}
+                <select
+                  value={newMeeting.mode}
+                  onChange={(e) => setNewMeeting({
+                    ...newMeeting,
+                    mode: e.target.value as 'online' | 'offline',
+                    // Clear the other field when mode changes
+                    meetingLink: e.target.value === 'offline' ? '' : newMeeting.meetingLink,
+                    location: e.target.value === 'online' ? '' : newMeeting.location
+                  })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Conference Room A or leave empty for online"
-                />
+                >
+                  <option value="offline">Offline</option>
+                  <option value="online">Online</option>
+                </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Meeting Link (Optional)
-                </label>
-                <input
-                  type="url"
-                  value={newMeeting.meetingLink}
-                  onChange={(e) => setNewMeeting({ ...newMeeting, meetingLink: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="https://meet.google.com/..."
-                />
-              </div>
+              {newMeeting.mode === 'online' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Meeting Link *
+                  </label>
+                  <input
+                    type="url"
+                    value={newMeeting.meetingLink}
+                    onChange={(e) => setNewMeeting({ ...newMeeting, meetingLink: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="https://meet.google.com/..."
+                    required
+                  />
+                </div>
+              )}
+
+              {newMeeting.mode === 'offline' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Location *
+                  </label>
+                  <input
+                    type="text"
+                    value={newMeeting.location}
+                    onChange={(e) => setNewMeeting({ ...newMeeting, location: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Conference Room A"
+                    required
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Attendees *
                 </label>
                 <div className="space-y-2">
-                  <select
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        handleAttendeeToggle(e.target.value);
-                        e.target.value = ''; // Reset dropdown
-                      }
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Select attendees...</option>
+                  {/* Select All / Deselect All */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="selectAll"
+                        checked={newMeeting.attendees.length === availableAttendees.length}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            handleSelectAllAttendees();
+                          } else {
+                            handleDeselectAllAttendees();
+                          }
+                        }}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="selectAll" className="text-sm font-medium text-gray-700">
+                        Select All
+                      </label>
+                    </div>
+                    <span className="text-sm text-gray-500">
+                      {newMeeting.attendees.length} of {availableAttendees.length} selected
+                    </span>
+                  </div>
+
+                  {/* Attendee Checkboxes */}
+                  <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-md p-2 space-y-2">
                     {availableAttendees.map(attendee => {
                       const attendeeName = `${attendee.name} (${attendee.employeeId})`;
                       const isSelected = newMeeting.attendees.includes(attendeeName);
                       return (
-                        <option
-                          key={attendee.id}
-                          value={attendee.id}
-                          disabled={isSelected}
-                        >
-                          {attendeeName} {isSelected ? '✓' : ''}
-                        </option>
+                        <div key={attendee.id} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id={`attendee-${attendee.id}`}
+                            checked={isSelected}
+                            onChange={() => handleAttendeeToggle(attendee.id)}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          />
+                          <label htmlFor={`attendee-${attendee.id}`} className="text-sm text-gray-700 flex-1">
+                            {attendeeName}
+                          </label>
+                        </div>
                       );
                     })}
-                  </select>
+                  </div>
 
                   {/* Selected attendees display */}
                   {newMeeting.attendees.length > 0 && (
@@ -1039,26 +833,20 @@ export default function ManagerMeetings() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Priority
-                </label>
-                <select
-                  value={newMeeting.priority}
-                  onChange={(e) => setNewMeeting({ ...newMeeting, priority: e.target.value as 'low' | 'medium' | 'high' })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="low">Low Priority</option>
-                  <option value="medium">Medium Priority</option>
-                  <option value="high">High Priority</option>
-                </select>
-              </div>
+
 
               <div className="flex space-x-3 pt-4">
                 <Button
                   onClick={handleCreateMeeting}
                   className="flex-1 bg-green-600 hover:bg-green-700"
-                  disabled={!newMeeting.title.trim() || !newMeeting.date || !newMeeting.time || newMeeting.attendees.length === 0}
+                  disabled={
+                    !newMeeting.title.trim() ||
+                    !newMeeting.date ||
+                    !newMeeting.time ||
+                    newMeeting.attendees.length === 0 ||
+                    (newMeeting.mode === 'online' && !newMeeting.meetingLink.trim()) ||
+                    (newMeeting.mode === 'offline' && !newMeeting.location.trim())
+                  }
                 >
                   Create Meeting
                 </Button>
@@ -1075,7 +863,7 @@ export default function ManagerMeetings() {
                       location: '',
                       attendees: [],
                       duration: 60,
-                      priority: 'medium'
+                      mode: 'offline'
                     });
                   }}
                   className="flex-1"
@@ -1086,105 +874,7 @@ export default function ManagerMeetings() {
             </div>
           </Modal>
 
-          {/* Add Reminder Modal */}
-          <Modal
-            isOpen={isModalOpen}
-            onClose={() => setIsModalOpen(false)}
-            title="Add Meeting Reminder"
-          >
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Meeting Title *
-                </label>
-                <input
-                  type="text"
-                  value={newReminder.title}
-                  onChange={(e) => setNewReminder({ ...newReminder, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter meeting title"
-                />
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
-                <textarea
-                  value={newReminder.description}
-                  onChange={(e) => setNewReminder({ ...newReminder, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  rows={3}
-                  placeholder="Enter meeting description or notes"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Date *
-                  </label>
-                  <input
-                    type="date"
-                    value={newReminder.date}
-                    onChange={(e) => setNewReminder({ ...newReminder, date: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Time *
-                  </label>
-                  <input
-                    type="time"
-                    value={newReminder.time}
-                    onChange={(e) => setNewReminder({ ...newReminder, time: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Meeting Link (Optional)
-                </label>
-                <input
-                  type="url"
-                  value={newReminder.meetingLink}
-                  onChange={(e) => setNewReminder({ ...newReminder, meetingLink: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="https://meet.google.com/..."
-                />
-              </div>
-
-              <div className="flex space-x-3 pt-4">
-                <Button
-                  onClick={handleAddReminder}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700"
-                  disabled={!newReminder.title.trim() || !newReminder.date || !newReminder.time}
-                >
-                  Add Reminder
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    setNewReminder({
-                      title: '',
-                      description: '',
-                      date: '',
-                      time: '',
-                      meetingLink: ''
-                    });
-                  }}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          </Modal>
         </div>
       </ManagerLayout>
     </ProtectedRoute>
