@@ -7,12 +7,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { CheckInOutBox } from '@/components/employee/CheckInOutBox';
 import { Calendar } from '@/components/employee/Calendar';
 import { TodoList } from '@/components/employee/TodoList';
+import { TodaysMeetings } from '@/components/employee/TodaysMeetings';
 import { LeaveStatusTable } from '@/components/employee/LeaveStatusTable';
 import { StatsBoxes } from '@/components/employee/StatsBoxes';
+import { useMeetings } from '@/contexts/MeetingsContext';
 import { AttendanceRecord, Todo, LeaveRequest, WorkingDaysStats } from '@/types';
 
 export default function EmployeeDashboard() {
   const { user } = useAuth();
+  const { getTodaysMeetings } = useMeetings();
   // Mock data - In a real app, this would come from an API
   const [todayAttendance, setTodayAttendance] = useState<AttendanceRecord | undefined>(undefined);
   
@@ -159,6 +162,9 @@ export default function EmployeeDashboard() {
             onToggleTodo={handleToggleTodo}
           />
         </div>
+
+        {/* Today's Meetings */}
+        <TodaysMeetings meetings={getTodaysMeetings()} />
 
         {/* Leave Status Table */}
         <LeaveStatusTable leaveRequests={leaveRequests} />

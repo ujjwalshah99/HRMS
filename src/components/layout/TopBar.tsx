@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMeetings } from '@/contexts/MeetingsContext';
 
 interface TopBarProps {
   employeeName: string;
@@ -12,6 +13,7 @@ interface TopBarProps {
 
 export const TopBar: React.FC<TopBarProps> = ({ employeeName, profilePicture }) => {
   const { logout, user } = useAuth();
+  const { getTodaysMeetings } = useMeetings();
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
 
@@ -24,6 +26,14 @@ export const TopBar: React.FC<TopBarProps> = ({ employeeName, profilePicture }) 
       day: 'numeric'
     };
     return now.toLocaleDateString('en-US', options);
+  };
+
+  const formatTime = (time: string) => {
+    const [hours, minutes] = time.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
   };
 
   const handleLogout = () => {
@@ -47,29 +57,17 @@ export const TopBar: React.FC<TopBarProps> = ({ employeeName, profilePicture }) 
     employeeId: 'EMP001'
   };
 
-  // Mock notifications data (in real app, this would come from API)
-  const todayDate = new Date().toISOString().split('T')[0];
+  // Get today's meetings from context
+  const todayMeetingsData = getTodaysMeetings();
 
-  const todayMeetings = [
-    {
-      id: '1',
-      type: 'meeting',
-      title: 'Weekly Team Standup',
-      message: 'Team sync meeting at 9:00 AM - Conference Room A',
-      time: '9:00 AM',
-      isRead: false,
-      priority: 'high'
-    },
-    {
-      id: '2',
-      type: 'meeting',
-      title: 'Client Presentation',
-      message: 'Project demo presentation at 11:00 AM - Online',
-      time: '11:00 AM',
-      isRead: false,
-      priority: 'high'
-    }
-  ];
+  const todayMeetings = todayMeetingsData.map(meeting => ({
+    id: meeting.id,
+    type: 'meeting' as const,
+    title: meeting.title,
+    message: `${formatTime(meeting.time)} - ${meeting.mode === 'online' ? 'Online' : meeting.location || 'Location TBD'}`,
+    time: formatTime(meeting.time),
+    isRead: false
+  }));
 
   const todayTasks = [
     {
@@ -274,15 +272,6 @@ export const TopBar: React.FC<TopBarProps> = ({ employeeName, profilePicture }) 
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v14a2 2 0 002 2z" />
                           </svg>
                           <h4 className="text-sm font-semibold text-gray-900">{meeting.title}</h4>
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            meeting.priority === 'high'
-                              ? 'bg-red-100 text-red-800'
-                              : meeting.priority === 'medium'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-green-100 text-green-800'
-                          }`}>
-                            {meeting.priority}
-                          </span>
                           {!meeting.isRead && (
                             <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                           )}
