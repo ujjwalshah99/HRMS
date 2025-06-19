@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ManagerLayout } from '@/components/layout/ManagerLayout';
+import { MDLayout } from '@/components/layout/MDLayout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { useAuth } from '@/contexts/AuthContext';
@@ -152,10 +152,9 @@ export default function MDTasks() {
 
   return (
     <ProtectedRoute allowedRoles={['managing-director']}>
-      <ManagerLayout 
-        userName={user?.name || "Managing Director"} 
+      <MDLayout
+        userName={user?.name || "Managing Director"}
         profilePicture={user?.profilePicture}
-        userRole="managing-director"
       >
         <div className="space-y-6">
           {/* Header */}
@@ -371,7 +370,7 @@ export default function MDTasks() {
             </CardContent>
           </Card>
         </div>
-      </ManagerLayout>
+      </MDLayout>
     </ProtectedRoute>
   );
 }

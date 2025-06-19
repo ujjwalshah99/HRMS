@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ManagerLayout } from '@/components/layout/ManagerLayout';
+import { MDLayout } from '@/components/layout/MDLayout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -10,14 +10,15 @@ import { useAuth } from '@/contexts/AuthContext';
 export default function MDAttendance() {
   const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedDepartment, setSelectedDepartment] = useState('all');
+  const [selectedEmployee, setSelectedEmployee] = useState('all');
 
-  // Mock attendance data
+  // Mock attendance data (same as manager but read-only for MD)
   const attendanceData = [
     {
       id: '1',
       name: 'John Doe',
       email: 'john.doe@updesco.com',
+      employeeId: 'EMP001',
       department: 'Engineering',
       checkIn: '09:00 AM',
       checkOut: '05:30 PM',
@@ -28,6 +29,7 @@ export default function MDAttendance() {
       id: '2',
       name: 'Jane Smith',
       email: 'jane.smith@updesco.com',
+      employeeId: 'EMP002',
       department: 'Engineering',
       checkIn: '09:15 AM',
       checkOut: '05:45 PM',
@@ -38,6 +40,7 @@ export default function MDAttendance() {
       id: '3',
       name: 'Mike Johnson',
       email: 'mike.johnson@updesco.com',
+      employeeId: 'EMP003',
       department: 'Marketing',
       checkIn: '--',
       checkOut: '--',
@@ -48,6 +51,7 @@ export default function MDAttendance() {
       id: '4',
       name: 'Sarah Wilson',
       email: 'sarah.wilson@updesco.com',
+      employeeId: 'EMP004',
       department: 'Engineering',
       checkIn: '08:45 AM',
       checkOut: '04:30 PM',
@@ -58,6 +62,7 @@ export default function MDAttendance() {
       id: '5',
       name: 'David Brown',
       email: 'david.brown@updesco.com',
+      employeeId: 'EMP005',
       department: 'HR',
       checkIn: '09:05 AM',
       checkOut: '05:35 PM',
@@ -66,7 +71,17 @@ export default function MDAttendance() {
     }
   ];
 
-  const departments = ['all', 'Engineering', 'Marketing', 'HR', 'Finance'];
+  // Mock employees data for filtering
+  const employees = [
+    { id: 'all', name: 'All Employees', employeeId: '' },
+    { id: '1', name: 'John Doe', employeeId: 'EMP001' },
+    { id: '2', name: 'Jane Smith', employeeId: 'EMP002' },
+    { id: '3', name: 'Mike Johnson', employeeId: 'EMP003' },
+    { id: '4', name: 'Sarah Wilson', employeeId: 'EMP004' },
+    { id: '5', name: 'David Brown', employeeId: 'EMP005' },
+    { id: '6', name: 'Emily Davis', employeeId: 'EMP006' },
+    { id: '7', name: 'Robert Miller', employeeId: 'EMP007' }
+  ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -83,21 +98,62 @@ export default function MDAttendance() {
     }
   };
 
-  const filteredData = attendanceData.filter(emp => 
-    selectedDepartment === 'all' || emp.department === selectedDepartment
+  const filteredData = attendanceData.filter(emp =>
+    selectedEmployee === 'all' || emp.id === selectedEmployee
   );
 
-  const handleDownloadReport = () => {
-    console.log(`Downloading attendance report for ${selectedDate}`);
-    alert('Report download started! (This is a demo - MD has read-only access)');
+  const handleDownloadMonthlyReport = () => {
+    const selectedEmp = employees.find(emp => emp.id === selectedEmployee);
+    const empName = selectedEmp ? selectedEmp.name : 'All Employees';
+    const currentDate = new Date(selectedDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+    // Generate CSV data based on selected employee and date
+    let csvData = [['Employee', 'Employee ID', 'Date', 'Check-In', 'Check-Out', 'Working Hours', 'Status']];
+
+    if (selectedEmployee === 'all') {
+      // Generate data for all employees
+      attendanceData.forEach(emp => {
+        csvData.push([
+          emp.name,
+          emp.employeeId,
+          selectedDate,
+          emp.checkIn,
+          emp.checkOut,
+          emp.workingHours,
+          emp.status
+        ]);
+      });
+    } else {
+      // Generate data for selected employee
+      const empData = attendanceData.find(emp => emp.id === selectedEmployee);
+      if (empData) {
+        csvData.push([
+          empData.name,
+          empData.employeeId,
+          selectedDate,
+          empData.checkIn,
+          empData.checkOut,
+          empData.workingHours,
+          empData.status
+        ]);
+      }
+    }
+
+    const csvContent = csvData.map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${empName}_${currentDate}_Attendance_Report.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
   };
 
   return (
     <ProtectedRoute allowedRoles={['managing-director']}>
-      <ManagerLayout 
-        userName={user?.name || "Managing Director"} 
+      <MDLayout
+        userName={user?.name || "Managing Director"}
         profilePicture={user?.profilePicture}
-        userRole="managing-director"
       >
         <div className="space-y-6">
           {/* Header */}
@@ -109,7 +165,7 @@ export default function MDAttendance() {
           {/* Filters */}
           <Card>
             <CardHeader>
-              <CardTitle>View Options</CardTitle>
+              <CardTitle>Filters</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -126,29 +182,29 @@ export default function MDAttendance() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Department
+                    Employee
                   </label>
                   <select
-                    value={selectedDepartment}
-                    onChange={(e) => setSelectedDepartment(e.target.value)}
+                    value={selectedEmployee}
+                    onChange={(e) => setSelectedEmployee(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
-                    {departments.map(dept => (
-                      <option key={dept} value={dept}>
-                        {dept === 'all' ? 'All Departments' : dept}
+                    {employees.map(emp => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.id === 'all' ? emp.name : `${emp.name} (${emp.employeeId})`}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div className="flex items-end">
-                  <Button 
-                    onClick={handleDownloadReport}
+                  <Button
+                    onClick={handleDownloadMonthlyReport}
                     className="w-full bg-blue-600 hover:bg-blue-700"
                   >
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    Download Report
+                    Export Report
                   </Button>
                 </div>
               </div>
@@ -170,7 +226,7 @@ export default function MDAttendance() {
                     })}
                   </span>
                   <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                    Read Only
+                    Executive View
                   </span>
                 </div>
               </CardTitle>
@@ -186,6 +242,7 @@ export default function MDAttendance() {
                       <th className="text-left py-3 px-2 font-medium text-gray-700">Check-Out</th>
                       <th className="text-left py-3 px-2 font-medium text-gray-700">Working Hours</th>
                       <th className="text-left py-3 px-2 font-medium text-gray-700">Status</th>
+                      <th className="text-left py-3 px-2 font-medium text-gray-700">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -212,6 +269,13 @@ export default function MDAttendance() {
                           <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(employee.status)}`}>
                             {employee.status}
                           </span>
+                        </td>
+                        <td className="py-3 px-2">
+                          <div className="flex space-x-2">
+                            <span className="text-xs text-gray-400 px-3 py-1 bg-gray-100 rounded">
+                              View Only
+                            </span>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -305,7 +369,7 @@ export default function MDAttendance() {
             </Card>
           </div>
         </div>
-      </ManagerLayout>
+      </MDLayout>
     </ProtectedRoute>
   );
 }

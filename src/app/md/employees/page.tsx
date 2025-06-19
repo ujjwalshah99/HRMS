@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ManagerLayout } from '@/components/layout/ManagerLayout';
+import { MDLayout } from '@/components/layout/MDLayout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -18,15 +19,12 @@ interface Employee {
   attendanceRate: number;
   tasksCompleted: number;
   totalTasks: number;
-  manager: string;
-  salary: number;
-  location: string;
 }
 
 export default function MDEmployees() {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDepartment, setSelectedDepartment] = useState('all');
+
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
 
@@ -41,10 +39,7 @@ export default function MDEmployees() {
       status: 'active',
       attendanceRate: 95,
       tasksCompleted: 15,
-      totalTasks: 18,
-      manager: 'Sarah Johnson',
-      salary: 85000,
-      location: 'New York'
+      totalTasks: 18
     },
     {
       id: '2',
@@ -56,10 +51,7 @@ export default function MDEmployees() {
       status: 'active',
       attendanceRate: 92,
       tasksCompleted: 12,
-      totalTasks: 14,
-      manager: 'Sarah Johnson',
-      salary: 75000,
-      location: 'San Francisco'
+      totalTasks: 14
     },
     {
       id: '3',
@@ -71,10 +63,7 @@ export default function MDEmployees() {
       status: 'active',
       attendanceRate: 88,
       tasksCompleted: 10,
-      totalTasks: 12,
-      manager: 'Lisa Chen',
-      salary: 65000,
-      location: 'Chicago'
+      totalTasks: 12
     },
     {
       id: '4',
@@ -86,10 +75,7 @@ export default function MDEmployees() {
       status: 'active',
       attendanceRate: 98,
       tasksCompleted: 16,
-      totalTasks: 16,
-      manager: 'Sarah Johnson',
-      salary: 80000,
-      location: 'Austin'
+      totalTasks: 16
     },
     {
       id: '5',
@@ -101,59 +87,9 @@ export default function MDEmployees() {
       status: 'active',
       attendanceRate: 90,
       tasksCompleted: 14,
-      totalTasks: 15,
-      manager: 'HR Director',
-      salary: 55000,
-      location: 'Boston'
-    },
-    {
-      id: '6',
-      name: 'Lisa Chen',
-      email: 'lisa.chen@updesco.com',
-      department: 'Marketing',
-      position: 'Marketing Manager',
-      joinDate: '2022-08-15',
-      status: 'active',
-      attendanceRate: 94,
-      tasksCompleted: 18,
-      totalTasks: 20,
-      manager: 'VP Marketing',
-      salary: 95000,
-      location: 'Los Angeles'
-    },
-    {
-      id: '7',
-      name: 'Robert Taylor',
-      email: 'robert.taylor@updesco.com',
-      department: 'Finance',
-      position: 'Financial Analyst',
-      joinDate: '2023-01-30',
-      status: 'active',
-      attendanceRate: 96,
-      tasksCompleted: 13,
-      totalTasks: 15,
-      manager: 'Finance Director',
-      salary: 70000,
-      location: 'New York'
-    },
-    {
-      id: '8',
-      name: 'Emily Davis',
-      email: 'emily.davis@updesco.com',
-      department: 'Finance',
-      position: 'Senior Accountant',
-      joinDate: '2022-12-01',
-      status: 'active',
-      attendanceRate: 93,
-      tasksCompleted: 11,
-      totalTasks: 12,
-      manager: 'Finance Director',
-      salary: 65000,
-      location: 'Miami'
+      totalTasks: 15
     }
   ]);
-
-  const departments = ['all', 'Engineering', 'Marketing', 'HR', 'Finance'];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -180,8 +116,7 @@ export default function MDEmployees() {
     const matchesSearch = emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          emp.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          emp.position.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDepartment = selectedDepartment === 'all' || emp.department === selectedDepartment;
-    return matchesSearch && matchesDepartment;
+    return matchesSearch;
   });
 
   const handleViewProfile = (employee: Employee) => {
@@ -197,15 +132,6 @@ export default function MDEmployees() {
     });
   };
 
-  const formatSalary = (salary: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(salary);
-  };
-
   const calculateTenure = (joinDate: string) => {
     const join = new Date(joinDate);
     const now = new Date();
@@ -215,45 +141,27 @@ export default function MDEmployees() {
     return months > 12 ? `${Math.floor(months / 12)} year(s)` : `${months} month(s)`;
   };
 
-  // Calculate organizational statistics
-  const orgStats = {
-    totalEmployees: employees.length,
-    activeEmployees: employees.filter(e => e.status === 'active').length,
-    averageAttendance: Math.round(employees.reduce((acc, e) => acc + e.attendanceRate, 0) / employees.length),
-    averageSalary: Math.round(employees.reduce((acc, e) => acc + e.salary, 0) / employees.length),
-    departmentCounts: departments.filter(d => d !== 'all').map(dept => ({
-      department: dept,
-      count: employees.filter(e => e.department === dept).length
-    }))
-  };
-
   return (
     <ProtectedRoute allowedRoles={['managing-director']}>
-      <ManagerLayout 
-        userName={user?.name || "Managing Director"} 
+      <MDLayout
+        userName={user?.name || "Managing Director"}
         profilePicture={user?.profilePicture}
-        userRole="managing-director"
       >
         <div className="space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Employee Directory</h1>
-              <p className="text-gray-600">Executive overview of organizational workforce</p>
-            </div>
-            <div className="px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-              Executive View
-            </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Employee Management</h1>
+            <p className="text-gray-600">Manage team members and their information</p>
           </div>
 
-          {/* Organizational Statistics */}
+          {/* Employee Statistics */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <Card className="bg-blue-50 border-blue-200">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-blue-600">Total Workforce</p>
-                    <p className="text-3xl font-bold text-blue-900">{orgStats.totalEmployees}</p>
+                    <p className="text-sm font-medium text-blue-600">Total Employees</p>
+                    <p className="text-3xl font-bold text-blue-900">{employees.length}</p>
                   </div>
                   <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                     <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -268,8 +176,10 @@ export default function MDEmployees() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-green-600">Active Employees</p>
-                    <p className="text-3xl font-bold text-green-900">{orgStats.activeEmployees}</p>
+                    <p className="text-sm font-medium text-green-600">Active</p>
+                    <p className="text-3xl font-bold text-green-900">
+                      {employees.filter(e => e.status === 'active').length}
+                    </p>
                   </div>
                   <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
                     <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -285,7 +195,9 @@ export default function MDEmployees() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-purple-600">Avg. Attendance</p>
-                    <p className="text-3xl font-bold text-purple-900">{orgStats.averageAttendance}%</p>
+                    <p className="text-3xl font-bold text-purple-900">
+                      {Math.round(employees.reduce((acc, e) => acc + e.attendanceRate, 0) / employees.length)}%
+                    </p>
                   </div>
                   <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
                     <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -300,12 +212,14 @@ export default function MDEmployees() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-orange-600">Avg. Salary</p>
-                    <p className="text-3xl font-bold text-orange-900">{formatSalary(orgStats.averageSalary)}</p>
+                    <p className="text-sm font-medium text-orange-600">Task Completion</p>
+                    <p className="text-3xl font-bold text-orange-900">
+                      {Math.round(employees.reduce((acc, e) => acc + getCompletionRate(e.tasksCompleted, e.totalTasks), 0) / employees.length)}%
+                    </p>
                   </div>
                   <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
                     <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                     </svg>
                   </div>
                 </div>
@@ -313,61 +227,23 @@ export default function MDEmployees() {
             </Card>
           </div>
 
-          {/* Department Breakdown */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Department Distribution</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {orgStats.departmentCounts.map((dept) => (
-                  <div key={dept.department} className="p-4 border border-gray-200 rounded-lg text-center">
-                    <h3 className="font-semibold text-gray-900 mb-2">{dept.department}</h3>
-                    <p className="text-2xl font-bold text-blue-600">{dept.count}</p>
-                    <p className="text-sm text-gray-500">
-                      {Math.round((dept.count / orgStats.totalEmployees) * 100)}% of workforce
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Search and Filters */}
           <Card>
             <CardHeader>
-              <CardTitle>Search & Filter</CardTitle>
+              <CardTitle>Search Employees</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Search Employees
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Search by name, email, or position..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Department
-                  </label>
-                  <select
-                    value={selectedDepartment}
-                    onChange={(e) => setSelectedDepartment(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    {departments.map(dept => (
-                      <option key={dept} value={dept}>
-                        {dept === 'all' ? 'All Departments' : dept}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Search Employees
+                </label>
+                <input
+                  type="text"
+                  placeholder="Search by name, email, or position..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
               </div>
             </CardContent>
           </Card>
@@ -375,63 +251,77 @@ export default function MDEmployees() {
           {/* Employee List */}
           <Card>
             <CardHeader>
-              <CardTitle>Employee Directory ({filteredEmployees.length})</CardTitle>
+              <CardTitle>Employee List ({filteredEmployees.length})</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {filteredEmployees.map((employee) => (
-                  <div key={employee.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                          <span className="text-blue-600 font-medium">
-                            {employee.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-3 px-2 font-medium text-gray-700">Employee</th>
+                      <th className="text-left py-3 px-2 font-medium text-gray-700">Department</th>
+                      <th className="text-left py-3 px-2 font-medium text-gray-700">Position</th>
+                      <th className="text-left py-3 px-2 font-medium text-gray-700">Join Date</th>
+                      <th className="text-left py-3 px-2 font-medium text-gray-700">Attendance</th>
+                      <th className="text-left py-3 px-2 font-medium text-gray-700">Task Progress</th>
+                      <th className="text-left py-3 px-2 font-medium text-gray-700">Status</th>
+                      <th className="text-left py-3 px-2 font-medium text-gray-700">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredEmployees.map((employee) => (
+                      <tr key={employee.id} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="py-3 px-2">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <span className="text-blue-600 font-medium text-xs">
+                                {employee.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">{employee.name}</p>
+                              <p className="text-xs text-gray-500">{employee.email}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-2 text-gray-900">{employee.department}</td>
+                        <td className="py-3 px-2 text-gray-900">{employee.position}</td>
+                        <td className="py-3 px-2 text-gray-600">{formatDate(employee.joinDate)}</td>
+                        <td className="py-3 px-2">
+                          <span className={`font-medium ${getAttendanceColor(employee.attendanceRate)}`}>
+                            {employee.attendanceRate}%
                           </span>
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-1">
-                            <h3 className="font-semibold text-gray-900">{employee.name}</h3>
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(employee.status)}`}>
-                              {employee.status}
+                        </td>
+                        <td className="py-3 px-2">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm text-gray-600">
+                              {employee.tasksCompleted}/{employee.totalTasks}
+                            </span>
+                            <span className="text-sm font-medium text-blue-600">
+                              ({getCompletionRate(employee.tasksCompleted, employee.totalTasks)}%)
                             </span>
                           </div>
-                          <p className="text-sm text-gray-600">{employee.position} • {employee.department}</p>
-                          <p className="text-xs text-gray-500">{employee.email} • {employee.location}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center space-x-6 text-sm">
-                        <div className="text-center">
-                          <p className="text-gray-500">Attendance</p>
-                          <p className={`font-medium ${getAttendanceColor(employee.attendanceRate)}`}>
-                            {employee.attendanceRate}%
-                          </p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-gray-500">Performance</p>
-                          <p className="font-medium text-blue-600">
-                            {getCompletionRate(employee.tasksCompleted, employee.totalTasks)}%
-                          </p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-gray-500">Salary</p>
-                          <p className="font-medium text-gray-900">
-                            {formatSalary(employee.salary)}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <button 
-                          onClick={() => handleViewProfile(employee)}
-                          className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                        >
-                          View Profile
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                        </td>
+                        <td className="py-3 px-2">
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(employee.status)}`}>
+                            {employee.status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-2">
+                          <div className="flex space-x-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleViewProfile(employee)}
+                            >
+                              View Profile
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
 
               {filteredEmployees.length === 0 && (
@@ -439,7 +329,8 @@ export default function MDEmployees() {
                   <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
                   </svg>
-                  <p className="text-gray-500">No employees found matching your criteria</p>
+                  <p className="text-gray-500 text-lg font-medium">No employees found</p>
+                  <p className="text-gray-400 text-sm mt-1">Try adjusting your search criteria</p>
                 </div>
               )}
             </CardContent>
@@ -449,101 +340,57 @@ export default function MDEmployees() {
           <Modal
             isOpen={isProfileModalOpen}
             onClose={() => setIsProfileModalOpen(false)}
-            title="Employee Profile - Executive View"
-            size="lg"
+            title="Employee Profile"
           >
             {selectedEmployee && (
-              <div className="space-y-6">
-                {/* Basic Info */}
+              <div className="space-y-4">
                 <div className="flex items-center space-x-4">
                   <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-                    <span className="text-blue-600 font-bold text-xl">
+                    <span className="text-blue-600 font-bold text-lg">
                       {selectedEmployee.name.split(' ').map(n => n[0]).join('').toUpperCase()}
                     </span>
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">{selectedEmployee.name}</h2>
+                    <h3 className="text-xl font-bold text-gray-900">{selectedEmployee.name}</h3>
                     <p className="text-gray-600">{selectedEmployee.position}</p>
                     <p className="text-sm text-gray-500">{selectedEmployee.email}</p>
                   </div>
                 </div>
 
-                {/* Executive Details Grid */}
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-3">Employment Information</h3>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Department:</span>
-                        <span className="font-medium">{selectedEmployee.department}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Manager:</span>
-                        <span className="font-medium">{selectedEmployee.manager}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Location:</span>
-                        <span className="font-medium">{selectedEmployee.location}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Join Date:</span>
-                        <span className="font-medium">{formatDate(selectedEmployee.joinDate)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Tenure:</span>
-                        <span className="font-medium">{calculateTenure(selectedEmployee.joinDate)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Status:</span>
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(selectedEmployee.status)}`}>
-                          {selectedEmployee.status}
-                        </span>
-                      </div>
-                    </div>
+                    <label className="block text-sm font-medium text-gray-700">Department</label>
+                    <p className="mt-1 text-sm text-gray-900">{selectedEmployee.department}</p>
                   </div>
-
                   <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-3">Performance & Compensation</h3>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Attendance Rate:</span>
-                        <span className={`font-medium ${getAttendanceColor(selectedEmployee.attendanceRate)}`}>
-                          {selectedEmployee.attendanceRate}%
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Tasks Completed:</span>
-                        <span className="font-medium">{selectedEmployee.tasksCompleted}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Total Tasks:</span>
-                        <span className="font-medium">{selectedEmployee.totalTasks}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Completion Rate:</span>
-                        <span className="font-medium text-blue-600">
-                          {getCompletionRate(selectedEmployee.tasksCompleted, selectedEmployee.totalTasks)}%
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Annual Salary:</span>
-                        <span className="font-medium text-green-600">{formatSalary(selectedEmployee.salary)}</span>
-                      </div>
-                    </div>
+                    <label className="block text-sm font-medium text-gray-700">Join Date</label>
+                    <p className="mt-1 text-sm text-gray-900">{formatDate(selectedEmployee.joinDate)}</p>
                   </div>
-                </div>
-
-                {/* Executive Actions */}
-                <div className="flex justify-center pt-4 border-t">
-                  <div className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm">
-                    Executive View - Read Only Access
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Attendance Rate</label>
+                    <p className={`mt-1 text-sm font-medium ${getAttendanceColor(selectedEmployee.attendanceRate)}`}>
+                      {selectedEmployee.attendanceRate}%
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Task Progress</label>
+                    <p className="mt-1 text-sm text-gray-900">
+                      {selectedEmployee.tasksCompleted}/{selectedEmployee.totalTasks}
+                      ({getCompletionRate(selectedEmployee.tasksCompleted, selectedEmployee.totalTasks)}%)
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Status</label>
+                    <span className={`mt-1 inline-block px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(selectedEmployee.status)}`}>
+                      {selectedEmployee.status}
+                    </span>
                   </div>
                 </div>
               </div>
             )}
           </Modal>
         </div>
-      </ManagerLayout>
+      </MDLayout>
     </ProtectedRoute>
   );
 }
