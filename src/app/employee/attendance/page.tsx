@@ -1,65 +1,47 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
+import { apiClient } from '@/lib/api';
+import { isHoliday, getHolidayName } from '@/lib/utils';
 import { AttendanceRecord } from '@/types';
 
 export default function EmployeeAttendance() {
   const { user } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock attendance data
-  const attendanceRecords: AttendanceRecord[] = [
-    {
-      id: '1',
-      employeeId: 'emp1',
-      date: '2024-01-15',
-      checkInTime: '09:00',
-      checkOutTime: '17:30',
-      status: 'present',
-      workingHours: 8.5
-    },
-    {
-      id: '2',
-      employeeId: 'emp1',
-      date: '2024-01-16',
-      checkInTime: '09:15',
-      checkOutTime: '17:45',
-      status: 'late',
-      workingHours: 8.5
-    },
-    {
-      id: '3',
-      employeeId: 'emp1',
-      date: '2024-01-17',
-      status: 'absent'
-    },
-    {
-      id: '4',
-      employeeId: 'emp1',
-      date: '2024-01-18',
-      checkInTime: '08:45',
-      checkOutTime: '16:30',
-      status: 'half-day',
-      workingHours: 4
-    },
-    {
-      id: '5',
-      employeeId: 'emp1',
-      date: '2024-01-19',
-      status: 'leave'
+  // Fetch attendance data on component mount and when date changes
+  useEffect(() => {
+    if (user) {
+      fetchAttendanceData();
     }
-  ];
+  }, [user]);
 
-  const holidays = [
-    { date: '2024-01-26', name: 'Republic Day' },
-    { date: '2024-03-08', name: 'Holi' },
-    { date: '2024-08-15', name: 'Independence Day' }
-  ];
+  // Force refresh function to clear cache
+  const forceRefresh = async () => {
+    setAttendanceRecords([]); // Clear current data
+    await fetchAttendanceData(); // Refetch
+  };
+
+  const fetchAttendanceData = async () => {
+    try {
+      setLoading(true);
+      const response = await apiClient.getAttendance();
+      const attendanceData = (response as any)?.attendanceRecords || [];
+      setAttendanceRecords(Array.isArray(attendanceData) ? attendanceData : []);
+    } catch (error) {
+      console.error('Error fetching attendance data:', error);
+      setAttendanceRecords([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getDaysInMonth = (date: Date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
@@ -70,31 +52,68 @@ export default function EmployeeAttendance() {
   };
 
   const getAttendanceForDate = (day: number) => {
-    const dateString = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return attendanceRecords.find(record => record.date === dateString);
+    const targetDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return attendanceRecords.find(record => {
+      const recordDate = new Date(record.date).toISOString().split('T')[0];
+      return recordDate === targetDate;
+    });
   };
 
-  const isHoliday = (day: number) => {
-    const dateString = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return holidays.find(holiday => holiday.date === dateString);
+  const isDayHoliday = (day: number) => {
+    const dayDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+    return isHoliday(dayDate);
   };
 
-  const getStatusColor = (status?: string, isHoliday?: boolean) => {
-    if (isHoliday) return 'bg-purple-100 text-purple-800 border-purple-200';
-    
+  const getStatusColor = (status?: string) => {
     switch (status) {
+      case 'PRESENT':
       case 'present':
-        return 'bg-emerald-100 text-emerald-900 border-emerald-200';
+        return {
+          background: 'bg-emerald-500/20',
+          text: 'text-emerald-900',
+          border: 'border-emerald-300'
+        };
+      case 'ABSENT':
       case 'absent':
-        return 'bg-red-100 text-red-900 border-red-200';
+        return {
+          background: 'bg-red-500/20',
+          text: 'text-red-900', 
+          border: 'border-red-300'
+        };
+      case 'LATE':
       case 'late':
-        return 'bg-amber-100 text-amber-900 border-amber-200';
+        return {
+          background: 'bg-yellow-400/20',
+          text: 'text-yellow-800',
+          border: 'border-yellow-400'
+        };
+      case 'HALF_DAY':
       case 'half-day':
-        return 'bg-orange-100 text-orange-900 border-orange-200';
+        return {
+          background: 'bg-amber-600/20',
+          text: 'text-amber-900',
+          border: 'border-amber-300'
+        };
+      case 'LEAVE':
       case 'leave':
-        return 'bg-blue-100 text-blue-900 border-blue-200';
+        return {
+          background: 'bg-blue-500/20',
+          text: 'text-blue-900',
+          border: 'border-blue-300'
+        };
+      case 'HOLIDAY':
+      case 'holiday':
+        return {
+          background: 'bg-purple-500/20',
+          text: 'text-purple-900',
+          border: 'border-purple-300'
+        };
       default:
-        return 'bg-gray-50 text-gray-800 border-gray-200';
+        return {
+          background: 'bg-gray-50',
+          text: 'text-gray-800',
+          border: 'border-gray-200'
+        };
     }
   };
 
@@ -129,17 +148,20 @@ export default function EmployeeAttendance() {
            recordDate.getFullYear() === currentDate.getFullYear();
   });
 
+  // Calculate holidays for current month
+  const holidayCount = Array.from({ length: daysInMonth }, (_, index) => {
+    const day = index + 1;
+    const dayDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+    return isHoliday(dayDate);
+  }).filter(Boolean).length;
+
   const breakdown = {
-    present: currentMonthRecords.filter(r => r.status === 'present').length,
-    absent: currentMonthRecords.filter(r => r.status === 'absent').length,
-    late: currentMonthRecords.filter(r => r.status === 'late').length,
-    halfDay: currentMonthRecords.filter(r => r.status === 'half-day').length,
-    leave: currentMonthRecords.filter(r => r.status === 'leave').length,
-    holidays: holidays.filter(h => {
-      const holidayDate = new Date(h.date);
-      return holidayDate.getMonth() === currentDate.getMonth() && 
-             holidayDate.getFullYear() === currentDate.getFullYear();
-    }).length
+    present: currentMonthRecords.filter(r => r.status === 'PRESENT').length,
+    absent: currentMonthRecords.filter(r => r.status === 'ABSENT').length,
+    late: currentMonthRecords.filter(r => r.status === 'LATE').length,
+    halfDay: currentMonthRecords.filter(r => r.status === 'HALF_DAY').length,
+    leave: currentMonthRecords.filter(r => r.status === 'LEAVE').length,
+    holidays: holidayCount
   };
 
   const handleDownloadAttendance = () => {
@@ -157,10 +179,11 @@ export default function EmployeeAttendance() {
         const day = index + 1;
         const dateString = `${year}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         const attendance = attendanceRecords.find(record => record.date === dateString);
-        const holiday = holidays.find(h => h.date === dateString);
+        const dayDate = new Date(year, currentDate.getMonth(), day);
+        const isDayHoliday = isHoliday(dayDate);
         const dayName = dayNames[new Date(dateString).getDay()];
 
-        if (holiday) {
+        if (isDayHoliday) {
           return [dateString, dayName, 'Holiday', '-', '-', '-'];
         } else if (attendance) {
           return [
@@ -199,8 +222,13 @@ export default function EmployeeAttendance() {
   };
 
   return (
-    <ProtectedRoute allowedRoles={['employee']}>
-      <Layout employeeName={user?.name || "Employee"} profilePicture={user?.profilePicture}>
+    <ProtectedRoute allowedRoles={['EMPLOYEE']}>
+      <Layout employeeName={user?.name || "Employee"}>
+        {loading ? (
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+          </div>
+        ) : (
         <div className="space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
@@ -249,6 +277,15 @@ export default function EmployeeAttendance() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </button>
+                  <button
+                    onClick={forceRefresh}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors bg-blue-50 text-blue-600"
+                    title="Force refresh attendance data"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  </button>
                 </div>
               </div>
             </CardHeader>
@@ -273,41 +310,55 @@ export default function EmployeeAttendance() {
                 {Array.from({ length: daysInMonth }, (_, index) => {
                   const day = index + 1;
                   const attendance = getAttendanceForDate(day);
-                  const holiday = isHoliday(day);
+                  const dayDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+                  const isDayHoliday = isHoliday(dayDate);
                   const isToday = isCurrentMonth && day === today.getDate();
                   const isFutureDate = isCurrentMonth && day > today.getDate();
+                  
+                  // Priority: Holiday > Attendance > Default
+                  let statusColors = null;
+                  if (isDayHoliday) {
+                    statusColors = getStatusColor('HOLIDAY');
+                  } else if (attendance) {
+                    statusColors = getStatusColor(attendance.status);
+                  }
 
                   return (
                     <div
                       key={day}
-                      className={`p-3 h-14 flex items-center justify-center text-sm relative rounded-xl border transition-all duration-200 ${
-                        isToday 
-                          ? 'ring-2 ring-blue-500 bg-blue-50 border-blue-300 shadow-md' 
-                          : holiday || attendance 
-                            ? `${getStatusColor(attendance?.status, !!holiday)} border shadow-sm` 
+                      className={`p-3 h-14 flex items-center justify-center text-sm relative rounded-xl border transition-all duration-200 cursor-pointer ${
+                        statusColors
+                          ? `${statusColors.background} ${statusColors.border} shadow-sm hover:shadow-md ${
+                              isToday ? 'ring-2 ring-blue-500 ring-offset-1' : ''
+                            }`
+                          : isToday
+                            ? 'ring-2 ring-blue-500 bg-blue-100/40 border-blue-400 shadow-md'
                             : isFutureDate
-                              ? 'bg-gray-50 border-gray-100'
-                              : 'bg-white border-gray-200 hover:bg-gray-50'
+                              ? 'bg-gray-50 border-gray-100 hover:bg-gray-100 hover:border-gray-200'
+                              : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm'
                       }`}
                     >
-                      <span className={`font-semibold ${
-                        isToday 
-                          ? 'text-blue-900 text-base' 
-                          : isFutureDate
-                            ? 'text-gray-400'
-                            : 'text-gray-800'
+                      <span className={`font-semibold text-base z-10 ${
+                        statusColors
+                          ? statusColors.text
+                          : isToday
+                            ? 'text-blue-900'
+                            : isFutureDate
+                              ? 'text-gray-400'
+                              : 'text-gray-800'
                       }`}>
                         {day}
                       </span>
-                      {(attendance || holiday) && (
-                        <div className="absolute bottom-1 right-1">
-                          <div className={`w-2.5 h-2.5 rounded-full shadow-sm ${
-                            holiday ? 'bg-purple-500' :
-                            attendance?.status === 'present' ? 'bg-emerald-500' :
-                            attendance?.status === 'absent' ? 'bg-red-500' :
-                            attendance?.status === 'late' ? 'bg-amber-500' :
-                            attendance?.status === 'half-day' ? 'bg-orange-500' :
-                            'bg-blue-500'
+                      {(attendance || isDayHoliday) && (
+                        <div className="absolute bottom-1 right-1 z-10">
+                          <div className={`w-2 h-2 rounded-full shadow-sm ${
+                            isDayHoliday ? 'bg-purple-600' :
+                            attendance?.status === 'PRESENT' ? 'bg-emerald-600' :
+                            attendance?.status === 'ABSENT' ? 'bg-red-600' :
+                            attendance?.status === 'LATE' ? 'bg-yellow-400' :
+                            attendance?.status === 'HALF_DAY' ? 'bg-amber-600' :
+                            attendance?.status === 'LEAVE' ? 'bg-blue-600' :
+                            'bg-gray-600'
                           }`}></div>
                         </div>
                       )}
@@ -320,28 +371,28 @@ export default function EmployeeAttendance() {
               <div className="mt-6 pt-4 border-t border-gray-200">
                 <h4 className="text-sm font-semibold text-gray-700 mb-3">Legend</h4>
                 <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-                  <div className="flex items-center space-x-2 p-2 bg-emerald-50 rounded-lg border border-emerald-200">
-                    <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-sm"></div>
+                  <div className="flex items-center space-x-2 p-2 bg-emerald-500/10 rounded-lg border border-emerald-200">
+                    <div className="w-3 h-3 rounded-full bg-emerald-600 shadow-sm"></div>
                     <span className="text-sm font-medium text-emerald-800">Present</span>
                   </div>
-                  <div className="flex items-center space-x-2 p-2 bg-red-50 rounded-lg border border-red-200">
-                    <div className="w-3 h-3 rounded-full bg-red-500 shadow-sm"></div>
+                  <div className="flex items-center space-x-2 p-2 bg-red-500/10 rounded-lg border border-red-200">
+                    <div className="w-3 h-3 rounded-full bg-red-600 shadow-sm"></div>
                     <span className="text-sm font-medium text-red-800">Absent</span>
                   </div>
-                  <div className="flex items-center space-x-2 p-2 bg-amber-50 rounded-lg border border-amber-200">
-                    <div className="w-3 h-3 rounded-full bg-amber-500 shadow-sm"></div>
-                    <span className="text-sm font-medium text-amber-800">Late</span>
+                  <div className="flex items-center space-x-2 p-2 bg-yellow-400/10 rounded-lg border border-yellow-300">
+                    <div className="w-3 h-3 rounded-full bg-yellow-400 shadow-sm"></div>
+                    <span className="text-sm font-medium text-yellow-700">Late</span>
                   </div>
-                  <div className="flex items-center space-x-2 p-2 bg-orange-50 rounded-lg border border-orange-200">
-                    <div className="w-3 h-3 rounded-full bg-orange-500 shadow-sm"></div>
-                    <span className="text-sm font-medium text-orange-800">Half Day</span>
+                  <div className="flex items-center space-x-2 p-2 bg-amber-600/10 rounded-lg border border-amber-200">
+                    <div className="w-3 h-3 rounded-full bg-amber-600 shadow-sm"></div>
+                    <span className="text-sm font-medium text-amber-800">Half Day</span>
                   </div>
-                  <div className="flex items-center space-x-2 p-2 bg-blue-50 rounded-lg border border-blue-200">
-                    <div className="w-3 h-3 rounded-full bg-blue-500 shadow-sm"></div>
+                  <div className="flex items-center space-x-2 p-2 bg-blue-500/10 rounded-lg border border-blue-200">
+                    <div className="w-3 h-3 rounded-full bg-blue-600 shadow-sm"></div>
                     <span className="text-sm font-medium text-blue-800">Leave</span>
                   </div>
-                  <div className="flex items-center space-x-2 p-2 bg-purple-50 rounded-lg border border-purple-200">
-                    <div className="w-3 h-3 rounded-full bg-purple-500 shadow-sm"></div>
+                  <div className="flex items-center space-x-2 p-2 bg-purple-500/10 rounded-lg border border-purple-200">
+                    <div className="w-3 h-3 rounded-full bg-purple-600 shadow-sm"></div>
                     <span className="text-sm font-medium text-purple-800">Holiday</span>
                   </div>
                 </div>
@@ -364,13 +415,13 @@ export default function EmployeeAttendance() {
                   <div className="text-2xl font-bold text-red-900">{breakdown.absent}</div>
                   <div className="text-sm text-red-700">Absent</div>
                 </div>
-                <div className="text-center p-4 bg-amber-50 rounded-lg border border-amber-200">
-                  <div className="text-2xl font-bold text-amber-900">{breakdown.late}</div>
-                  <div className="text-sm text-amber-700">Late</div>
+                <div className="text-center p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <div className="text-2xl font-bold text-yellow-900">{breakdown.late}</div>
+                  <div className="text-sm text-yellow-700">Late</div>
                 </div>
-                <div className="text-center p-4 bg-orange-50 rounded-lg border border-orange-200">
-                  <div className="text-2xl font-bold text-orange-900">{breakdown.halfDay}</div>
-                  <div className="text-sm text-orange-700">Half Day</div>
+                <div className="text-center p-4 bg-amber-50 rounded-lg border border-amber-200">
+                  <div className="text-2xl font-bold text-amber-900">{breakdown.halfDay}</div>
+                  <div className="text-sm text-amber-700">Half Day</div>
                 </div>
                 <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <div className="text-2xl font-bold text-blue-900">{breakdown.leave}</div>
@@ -384,6 +435,7 @@ export default function EmployeeAttendance() {
             </CardContent>
           </Card>
         </div>
+        )}
       </Layout>
     </ProtectedRoute>
   );

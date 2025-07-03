@@ -147,7 +147,7 @@ export default function MDReports() {
   const shouldShowEmployeeTable = selectedEmployee === 'all' || filteredMPRData.employees.length > 0;
 
   return (
-    <ProtectedRoute allowedRoles={['managing-director']}>
+    <ProtectedRoute allowedRoles={['MD']}>
       <MDLayout
         userName={user?.name || "Managing Director"}
         profilePicture={user?.profilePicture}

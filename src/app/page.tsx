@@ -13,13 +13,13 @@ export default function Home() {
       if (user) {
         // Redirect based on user role
         switch (user.role) {
-          case 'employee':
+          case 'EMPLOYEE':
             router.push('/employee/dashboard');
             break;
-          case 'manager':
+          case 'MANAGER':
             router.push('/manager/dashboard');
             break;
-          case 'managing-director':
+          case 'MD':
             router.push('/md/dashboard');
             break;
           default:

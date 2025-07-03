@@ -144,11 +144,10 @@ export default function ManagerEmployees() {
   };
 
   return (
-    <ProtectedRoute allowedRoles={['manager']}>
+    <ProtectedRoute allowedRoles={['MANAGER']}>
       <ManagerLayout 
         userName={user?.name || "Manager"} 
-        profilePicture={user?.profilePicture}
-        userRole="manager"
+        userRole="MANAGER"
       >
         <div className="space-y-6">
           {/* Header */}

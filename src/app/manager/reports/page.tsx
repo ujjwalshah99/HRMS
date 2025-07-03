@@ -151,7 +151,7 @@ export default function ManagerReports() {
   const shouldShowEmployeeTable = selectedEmployee === 'all' || filteredMPRData.employees.length > 0;
 
   return (
-    <ProtectedRoute allowedRoles={['manager']}>
+    <ProtectedRoute allowedRoles={['MANAGER']}>
       <ManagerLayout 
         userName={user?.name || "Manager"} 
         profilePicture={user?.profilePicture}

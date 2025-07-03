@@ -247,7 +247,7 @@ export default function EmployeeMPRDetails() {
   };
 
   return (
-    <ProtectedRoute allowedRoles={['manager']}>
+    <ProtectedRoute allowedRoles={['MANAGER']}>
       <ManagerLayout 
         userName={user?.name || "Manager"} 
         profilePicture={user?.profilePicture}

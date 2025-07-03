@@ -9,9 +9,16 @@ import { Todo } from '@/types';
 interface TodoListProps {
   todos: Todo[];
   onToggleTodo: (todoId: string) => void;
+  onAddTodo?: (title: string, description: string) => void;
+  onDeleteTodo?: (todoId: string) => void;
 }
 
-export const TodoList: React.FC<TodoListProps> = ({ todos, onToggleTodo }) => {
+export const TodoList: React.FC<TodoListProps> = ({ 
+  todos, 
+  onToggleTodo, 
+  onAddTodo, 
+  onDeleteTodo 
+}) => {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {

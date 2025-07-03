@@ -55,8 +55,8 @@ export default function EmployeeMeetings() {
   });
 
   return (
-    <ProtectedRoute allowedRoles={['employee']}>
-      <Layout employeeName={user?.name || "Employee"} profilePicture={user?.profilePicture}>
+    <ProtectedRoute allowedRoles={['EMPLOYEE']}>
+      <Layout employeeName={user?.name || "Employee"}>
         <div className="space-y-6">
           {/* Header */}
           <div>

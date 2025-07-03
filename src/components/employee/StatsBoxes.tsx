@@ -33,11 +33,11 @@ export const StatsBoxes: React.FC<StatsBoxesProps> = ({ stats }) => {
       textColor: 'text-green-600'
     },
     {
-      title: 'Leave Days',
-      value: stats.leaveDays,
+      title: 'Absent Days',
+      value: stats.absentDays,
       icon: (
         <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v14a2 2 0 002 2z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
         </svg>
       ),
       bgColor: 'bg-red-50',
@@ -45,11 +45,11 @@ export const StatsBoxes: React.FC<StatsBoxesProps> = ({ stats }) => {
       textColor: 'text-red-600'
     },
     {
-      title: 'Total Working Days',
-      value: stats.totalWorkingDays,
+      title: 'Leave Days',
+      value: stats.leaveDays || 0,
       icon: (
         <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v14a2 2 0 002 2z" />
         </svg>
       ),
       bgColor: 'bg-blue-50',
@@ -57,11 +57,23 @@ export const StatsBoxes: React.FC<StatsBoxesProps> = ({ stats }) => {
       textColor: 'text-blue-600'
     },
     {
+      title: 'Total Working Days',
+      value: stats.totalWorkingDays,
+      icon: (
+        <svg className="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2-2V7a2 2 0 012-2h2a2 2 0 002 2v2a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 00-2 2h-2a2 2 0 00-2 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2z" />
+        </svg>
+      ),
+      bgColor: 'bg-gray-50',
+      borderColor: 'border-gray-200',
+      textColor: 'text-gray-600'
+    },
+    {
       title: 'Attendance Rate',
       value: `${attendancePercentage}%`,
       icon: (
         <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2-2V7a2 2 0 012-2h2a2 2 0 002 2v2a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 00-2 2h-2a2 2 0 00-2 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
         </svg>
       ),
       bgColor: attendancePercentage >= 90 ? 'bg-green-50' : attendancePercentage >= 75 ? 'bg-yellow-50' : 'bg-red-50',
@@ -71,7 +83,7 @@ export const StatsBoxes: React.FC<StatsBoxesProps> = ({ stats }) => {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
       {statsData.map((stat, index) => (
         <Card key={index} className={`${stat.bgColor} ${stat.borderColor} border-2`}>
           <CardContent className="p-6">

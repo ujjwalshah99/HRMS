@@ -245,7 +245,7 @@ export default function EmployeeMPR() {
   };
 
   return (
-    <ProtectedRoute allowedRoles={['employee']}>
+    <ProtectedRoute allowedRoles={['EMPLOYEE']}>
       <Layout employeeName={user?.name || "Employee"} profilePicture={user?.profilePicture}>
         <div className="space-y-6">
           {/* Header */}

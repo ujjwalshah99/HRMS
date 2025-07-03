@@ -15,10 +15,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   allowedRoles,
   redirectTo = '/login'
 }) => {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isInitialized } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
+    // Wait for auth context to be fully initialized
+    if (!isInitialized) {
+      return;
+    }
+    
     if (!isLoading) {
       if (!user) {
         router.push(redirectTo);
@@ -28,13 +33,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       if (!allowedRoles.includes(user.role)) {
         // Redirect to appropriate dashboard based on user role
         switch (user.role) {
-          case 'employee':
+          case 'EMPLOYEE':
             router.push('/employee/dashboard');
             break;
-          case 'manager':
+          case 'MANAGER':
             router.push('/manager/dashboard');
             break;
-          case 'managing-director':
+          case 'MD':
             router.push('/md/dashboard');
             break;
           default:
@@ -43,9 +48,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         return;
       }
     }
-  }, [user, isLoading, allowedRoles, router, redirectTo]);
+  }, [user, isLoading, isInitialized, allowedRoles, router, redirectTo]);
 
-  if (isLoading) {
+  if (!isInitialized || isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -62,7 +67,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  if (!user || !allowedRoles.includes(user.role)) {
+  if (!isInitialized || !user || !allowedRoles.includes(user.role)) {
     return null;
   }
 

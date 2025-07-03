@@ -1,48 +1,44 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 
-interface LoginFormProps {
-  onLogin: (email: string, password: string, role: string) => void;
-}
-
-export const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
+export const LoginForm: React.FC = () => {
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    role: 'employee'
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
     
-    // Simulate API call
-    setTimeout(() => {
-      onLogin(formData.email, formData.password, formData.role);
+    try {
+      const success = await login(formData.email, formData.password);
+      if (!success) {
+        setError('Invalid email or password');
+      }
+    } catch (err) {
+      setError('Login failed. Please try again.');
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   const demoCredentials = [
-    { role: 'employee', email: 'john.doe@updesco.com', password: 'employee123' },
-    { role: 'manager', email: 'sarah.manager@updesco.com', password: 'manager123' },
-    { role: 'managing-director', email: 'md@updesco.com', password: 'md123' }
+    { role: 'Employee', email: 'john.doe@updesco.com', password: 'password123' },
+    { role: 'Manager', email: 'manager@updesco.com', password: 'manager123' },
+    { role: 'Managing Director', email: 'md@updesco.com', password: 'password123' }
   ];
 
-  const fillDemoCredentials = (role: string) => {
-    const cred = demoCredentials.find(c => c.role === role);
-    if (cred) {
-      setFormData({
-        email: cred.email,
-        password: cred.password,
-        role: cred.role
-      });
-    }
+  const fillDemoCredentials = (email: string, password: string) => {
+    setFormData({ email, password });
   };
 
   return (
@@ -63,20 +59,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Role
-                </label>
-                <select
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="employee">Employee</option>
-                  <option value="manager">Manager</option>
-                  <option value="managing-director">Managing Director</option>
-                </select>
-              </div>
+              {error && (
+                <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
+                  {error}
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -129,10 +116,10 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
                 {demoCredentials.map((cred) => (
                   <button
                     key={cred.role}
-                    onClick={() => fillDemoCredentials(cred.role)}
+                    onClick={() => fillDemoCredentials(cred.email, cred.password)}
                     className="w-full text-left p-2 text-xs bg-gray-50 hover:bg-gray-100 rounded border transition-colors"
                   >
-                    <div className="font-medium capitalize">{cred.role.replace('-', ' ')}</div>
+                    <div className="font-medium">{cred.role}</div>
                     <div className="text-gray-500">{cred.email}</div>
                   </button>
                 ))}

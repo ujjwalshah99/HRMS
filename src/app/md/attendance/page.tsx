@@ -150,7 +150,7 @@ export default function MDAttendance() {
   };
 
   return (
-    <ProtectedRoute allowedRoles={['managing-director']}>
+    <ProtectedRoute allowedRoles={['MD']}>
       <MDLayout
         userName={user?.name || "Managing Director"}
         profilePicture={user?.profilePicture}

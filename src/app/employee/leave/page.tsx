@@ -18,9 +18,9 @@ export default function EmployeeLeave() {
       employeeId: 'emp1',
       startDate: '2024-01-25',
       endDate: '2024-01-26',
-      type: 'vacation',
+      type: 'VACATION',
       reason: 'Family vacation',
-      status: 'approved',
+      status: 'APPROVED',
       appliedDate: '2024-01-10',
       approvedBy: 'manager1'
     },
@@ -29,9 +29,9 @@ export default function EmployeeLeave() {
       employeeId: 'emp1',
       startDate: '2024-02-05',
       endDate: '2024-02-05',
-      type: 'sick',
+      type: 'SICK',
       reason: 'Medical appointment',
-      status: 'pending',
+      status: 'PENDING',
       appliedDate: '2024-01-18'
     },
     {
@@ -39,9 +39,9 @@ export default function EmployeeLeave() {
       employeeId: 'emp1',
       startDate: '2024-01-15',
       endDate: '2024-01-15',
-      type: 'personal',
+      type: 'PERSONAL',
       reason: 'Personal work',
-      status: 'rejected',
+      status: 'REJECTED',
       appliedDate: '2024-01-10',
       rejectedBy: 'manager1'
     }
@@ -50,7 +50,7 @@ export default function EmployeeLeave() {
   const [newLeave, setNewLeave] = useState({
     startDate: '',
     endDate: '',
-    type: 'vacation' as 'vacation' | 'sick' | 'personal' | 'emergency',
+    type: 'VACATION' as 'VACATION' | 'SICK' | 'PERSONAL' | 'EMERGENCY' | 'MATERNITY' | 'PATERNITY',
     reason: ''
   });
 
@@ -58,16 +58,16 @@ export default function EmployeeLeave() {
     totalLeaves: 24,
     usedLeaves: 8,
     remainingLeaves: 16,
-    pendingRequests: leaveRequests.filter(req => req.status === 'pending').length
+    pendingRequests: leaveRequests.filter(req => req.status === 'PENDING').length
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'approved':
+      case 'APPROVED':
         return 'bg-green-100 text-green-800 border-green-200';
-      case 'rejected':
+      case 'REJECTED':
         return 'bg-red-100 text-red-800 border-red-200';
-      case 'pending':
+      case 'PENDING':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
@@ -76,13 +76,13 @@ export default function EmployeeLeave() {
 
   const getLeaveTypeColor = (type: string) => {
     switch (type) {
-      case 'vacation':
+      case 'VACATION':
         return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'sick':
+      case 'SICK':
         return 'bg-red-50 text-red-700 border-red-200';
-      case 'personal':
+      case 'PERSONAL':
         return 'bg-purple-50 text-purple-700 border-purple-200';
-      case 'emergency':
+      case 'EMERGENCY':
         return 'bg-orange-50 text-orange-700 border-orange-200';
       default:
         return 'bg-gray-50 text-gray-700 border-gray-200';
@@ -98,12 +98,12 @@ export default function EmployeeLeave() {
         endDate: newLeave.endDate,
         type: newLeave.type,
         reason: newLeave.reason,
-        status: 'pending',
+        status: 'PENDING',
         appliedDate: new Date().toISOString().split('T')[0]
       };
       
       setLeaveRequests([leaveRequest, ...leaveRequests]);
-      setNewLeave({ startDate: '', endDate: '', type: 'vacation', reason: '' });
+      setNewLeave({ startDate: '', endDate: '', type: 'VACATION', reason: '' });
       setIsModalOpen(false);
     }
   };
@@ -125,12 +125,12 @@ export default function EmployeeLeave() {
   };
 
   const appliedLeaves = leaveRequests;
-  const approvedLeaves = leaveRequests.filter(req => req.status === 'approved');
-  const rejectedLeaves = leaveRequests.filter(req => req.status === 'rejected');
+  const approvedLeaves = leaveRequests.filter(req => req.status === 'APPROVED');
+  const rejectedLeaves = leaveRequests.filter(req => req.status === 'REJECTED');
 
   return (
-    <ProtectedRoute allowedRoles={['employee']}>
-      <Layout employeeName={user?.name || "Employee"} profilePicture={user?.profilePicture}>
+    <ProtectedRoute allowedRoles={['EMPLOYEE']}>
+      <Layout employeeName={user?.name || "Employee"}>
         <div className="space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
@@ -333,7 +333,7 @@ export default function EmployeeLeave() {
                   variant="outline"
                   onClick={() => {
                     setIsModalOpen(false);
-                    setNewLeave({ startDate: '', endDate: '', type: 'vacation', reason: '' });
+                    setNewLeave({ startDate: '', endDate: '', type: 'VACATION', reason: '' });
                   }}
                   className="flex-1"
                 >

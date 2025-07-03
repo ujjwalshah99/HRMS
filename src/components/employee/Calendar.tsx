@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { AttendanceRecord } from '@/types';
+import { isHoliday, getHolidayName } from '@/lib/utils';
 
 interface CalendarProps {
   attendanceRecords: AttendanceRecord[];
@@ -21,22 +22,64 @@ export const Calendar: React.FC<CalendarProps> = ({ attendanceRecords }) => {
   };
 
   const getAttendanceForDate = (day: number) => {
-    const dateString = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return attendanceRecords.find(record => record.date === dateString);
+    const targetDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const records = Array.isArray(attendanceRecords) ? attendanceRecords : [];
+    return records.find(record => {
+      const recordDate = new Date(record.date).toISOString().split('T')[0];
+      return recordDate === targetDate;
+    });
   };
 
   const getStatusColor = (status?: string) => {
     switch (status) {
+      case 'PRESENT':
       case 'present':
-        return 'bg-emerald-100 text-emerald-900 border-emerald-200';
+        return {
+          background: 'bg-emerald-500/20',
+          text: 'text-emerald-900',
+          border: 'border-emerald-300'
+        };
+      case 'ABSENT':
       case 'absent':
-        return 'bg-red-100 text-red-900 border-red-200';
+        return {
+          background: 'bg-red-500/20',
+          text: 'text-red-900', 
+          border: 'border-red-300'
+        };
+      case 'LATE':
       case 'late':
-        return 'bg-amber-100 text-amber-900 border-amber-200';
+        return {
+          background: 'bg-yellow-400/20',
+          text: 'text-yellow-800',
+          border: 'border-yellow-400'
+        };
+      case 'HALF_DAY':
       case 'half-day':
-        return 'bg-orange-100 text-orange-900 border-orange-200';
+        return {
+          background: 'bg-amber-600/20',
+          text: 'text-amber-900',
+          border: 'border-amber-300'
+        };
+      case 'LEAVE':
+      case 'leave':
+        return {
+          background: 'bg-blue-500/20',
+          text: 'text-blue-900',
+          border: 'border-blue-300'
+        };
+      case 'HOLIDAY':
+      case 'holiday':
+        return {
+          background: 'bg-purple-500/20',
+          text: 'text-purple-900',
+          border: 'border-purple-300'
+        };
       default:
-        return 'bg-gray-50 text-gray-800 border-gray-200';
+        return {
+          background: 'bg-gray-50',
+          text: 'text-gray-800',
+          border: 'border-gray-200'
+        };
     }
   };
 
@@ -122,40 +165,55 @@ export const Calendar: React.FC<CalendarProps> = ({ attendanceRecords }) => {
           {Array.from({ length: daysInMonth }, (_, index) => {
             const day = index + 1;
             const attendance = getAttendanceForDate(day);
+            const dayDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+            const isDayHoliday = isHoliday(dayDate);
             const isToday = isCurrentMonth && day === today.getDate();
             const isFutureDate = isCurrentMonth && day > today.getDate();
+            
+            // Priority: Holiday > Attendance > Default
+            let statusColors = null;
+            if (isDayHoliday) {
+              statusColors = getStatusColor('HOLIDAY');
+            } else if (attendance) {
+              statusColors = getStatusColor(attendance.status);
+            }
 
             return (
               <div
                 key={day}
                 className={`p-3 h-14 flex items-center justify-center text-sm relative rounded-xl border transition-all duration-200 cursor-pointer ${
-                  isToday
-                    ? 'ring-2 ring-blue-500 bg-blue-50 border-blue-300 shadow-md'
-                    : attendance
-                      ? `${getStatusColor(attendance.status)} border shadow-sm hover:shadow-md`
+                  statusColors
+                    ? `${statusColors.background} ${statusColors.border} shadow-sm hover:shadow-md ${
+                        isToday ? 'ring-2 ring-blue-500 ring-offset-1' : ''
+                      }`
+                    : isToday
+                      ? 'ring-2 ring-blue-500 bg-blue-100/40 border-blue-400 shadow-md'
                       : isFutureDate
                         ? 'bg-gray-50 border-gray-100 hover:bg-gray-100 hover:border-gray-200'
                         : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm'
                 }`}
               >
-                <span className={`font-semibold ${
-                  isToday
-                    ? 'text-blue-900 text-base'
-                    : attendance
-                      ? ''
+                <span className={`font-semibold text-base z-10 ${
+                  statusColors
+                    ? statusColors.text
+                    : isToday
+                      ? 'text-blue-900'
                       : isFutureDate
                         ? 'text-gray-400'
                         : 'text-gray-800'
                 }`}>
                   {day}
                 </span>
-                {attendance && (
-                  <div className="absolute bottom-1 right-1">
-                    <div className={`w-2.5 h-2.5 rounded-full shadow-sm ${
-                      attendance.status === 'present' ? 'bg-emerald-500' :
-                      attendance.status === 'absent' ? 'bg-red-500' :
-                      attendance.status === 'late' ? 'bg-amber-500' :
-                      'bg-orange-500'
+                {(attendance || isDayHoliday) && (
+                  <div className="absolute bottom-1 right-1 z-10">
+                    <div className={`w-2 h-2 rounded-full shadow-sm ${
+                      isDayHoliday ? 'bg-purple-600' :
+                      attendance?.status === 'PRESENT' ? 'bg-emerald-600' :
+                      attendance?.status === 'ABSENT' ? 'bg-red-600' :
+                      attendance?.status === 'LATE' ? 'bg-yellow-400' :
+                      attendance?.status === 'HALF_DAY' ? 'bg-amber-600' :
+                      attendance?.status === 'LEAVE' ? 'bg-blue-600' :
+                      'bg-gray-600'
                     }`}></div>
                   </div>
                 )}
@@ -167,22 +225,30 @@ export const Calendar: React.FC<CalendarProps> = ({ attendanceRecords }) => {
         {/* Legend */}
         <div className="mt-6 pt-4 border-t border-gray-200">
           <h4 className="text-sm font-semibold text-gray-700 mb-3">Legend</h4>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="flex items-center space-x-2 p-2 bg-emerald-50 rounded-lg border border-emerald-200">
-              <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-sm"></div>
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+            <div className="flex items-center space-x-2 p-2 bg-emerald-500/10 rounded-lg border border-emerald-200">
+              <div className="w-3 h-3 rounded-full bg-emerald-600 shadow-sm"></div>
               <span className="text-sm font-medium text-emerald-800">Present</span>
             </div>
-            <div className="flex items-center space-x-2 p-2 bg-red-50 rounded-lg border border-red-200">
-              <div className="w-3 h-3 rounded-full bg-red-500 shadow-sm"></div>
+            <div className="flex items-center space-x-2 p-2 bg-red-500/10 rounded-lg border border-red-200">
+              <div className="w-3 h-3 rounded-full bg-red-600 shadow-sm"></div>
               <span className="text-sm font-medium text-red-800">Absent</span>
             </div>
-            <div className="flex items-center space-x-2 p-2 bg-amber-50 rounded-lg border border-amber-200">
-              <div className="w-3 h-3 rounded-full bg-amber-500 shadow-sm"></div>
-              <span className="text-sm font-medium text-amber-800">Late</span>
+            <div className="flex items-center space-x-2 p-2 bg-yellow-400/10 rounded-lg border border-yellow-300">
+              <div className="w-3 h-3 rounded-full bg-yellow-400 shadow-sm"></div>
+              <span className="text-sm font-medium text-yellow-700">Late</span>
             </div>
-            <div className="flex items-center space-x-2 p-2 bg-orange-50 rounded-lg border border-orange-200">
-              <div className="w-3 h-3 rounded-full bg-orange-500 shadow-sm"></div>
-              <span className="text-sm font-medium text-orange-800">Half Day</span>
+            <div className="flex items-center space-x-2 p-2 bg-amber-600/10 rounded-lg border border-amber-200">
+              <div className="w-3 h-3 rounded-full bg-amber-600 shadow-sm"></div>
+              <span className="text-sm font-medium text-amber-800">Half Day</span>
+            </div>
+            <div className="flex items-center space-x-2 p-2 bg-blue-500/10 rounded-lg border border-blue-200">
+              <div className="w-3 h-3 rounded-full bg-blue-600 shadow-sm"></div>
+              <span className="text-sm font-medium text-blue-800">Leave</span>
+            </div>
+            <div className="flex items-center space-x-2 p-2 bg-purple-500/10 rounded-lg border border-purple-200">
+              <div className="w-3 h-3 rounded-full bg-purple-600 shadow-sm"></div>
+              <span className="text-sm font-medium text-purple-800">Holiday</span>
             </div>
           </div>
         </div>
